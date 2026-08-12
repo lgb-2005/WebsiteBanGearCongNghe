@@ -1,0 +1,190 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_content %}
+<div class="admin-overview-grid admin-orders-stat-grid">
+    <article class="admin-stat-card accent-dark">
+        <span class="admin-stat-icon"><i class="bi bi-receipt"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Tổng đơn hàng</span>
+            <strong class="admin-stat-value">{{ orders_stats.total }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-orange">
+        <span class="admin-stat-icon"><i class="bi bi-hourglass-split"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đơn chờ xử lý</span>
+            <strong class="admin-stat-value">{{ orders_stats.pending }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-blue">
+        <span class="admin-stat-icon"><i class="bi bi-arrow-repeat"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đơn đang xử lý</span>
+            <strong class="admin-stat-value">{{ orders_stats.processing }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-green">
+        <span class="admin-stat-icon"><i class="bi bi-check2-circle"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đơn hoàn thành</span>
+            <strong class="admin-stat-value">{{ orders_stats.completed }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-red-soft">
+        <span class="admin-stat-icon"><i class="bi bi-x-circle"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đơn đã hủy</span>
+            <strong class="admin-stat-value">{{ orders_stats.cancelled }}</strong>
+        </div>
+    </article>
+</div>
+
+<section class="admin-panel">
+    <div class="admin-panel-header">
+        <div>
+            <h3>Danh sách đơn hàng</h3>
+            <p>Theo dõi, lọc và xử lý toàn bộ vòng đời đơn hàng trên một màn hình quản trị.</p>
+        </div>
+    </div>
+
+    <form method="get" class="admin-orders-filter-bar">
+
+        <div class="admin-orders-filter-row is-search">
+            <div class="admin-form-field" style="margin-bottom:0;position:relative;">
+                <label for="admin-orders-search">Tìm kiếm đơn hàng</label>
+                <i class="bi bi-search" style="position:absolute;left:12px;bottom:11px;color:#9ca3af;font-size:14px;pointer-events:none;"></i>
+                <input id="admin-orders-search" type="text" name="q" value="{{ orders_search_query }}"
+                       class="admin-form-control" style="padding-left:36px;"
+                       placeholder="Nhập mã đơn, tên khách hàng hoặc số điện thoại...">
+            </div>
+        </div>
+
+        <div class="admin-orders-filter-row is-filters">
+            <div class="admin-form-field" style="margin-bottom:0;">
+                <label for="admin-orders-status">Trạng thái đơn</label>
+                <select id="admin-orders-status" name="status" class="admin-form-control">
+                    <option value="">Tất cả</option>
+                    <option value="pending"{% if orders_status_filter == 'pending' %} selected{% endif %}>Chờ xử lý</option>
+                    <option value="processing"{% if orders_status_filter == 'processing' %} selected{% endif %}>Đang xử lý</option>
+                    <option value="completed"{% if orders_status_filter == 'completed' %} selected{% endif %}>Hoàn thành</option>
+                    <option value="cancelled"{% if orders_status_filter == 'cancelled' %} selected{% endif %}>Đã hủy</option>
+                </select>
+            </div>
+
+            <div class="admin-form-field" style="margin-bottom:0;">
+                <label for="admin-orders-payment">Thanh toán</label>
+                <select id="admin-orders-payment" name="payment" class="admin-form-control">
+                    <option value="">Tất cả</option>
+                    <option value="pending"{% if orders_payment_filter == 'pending' %} selected{% endif %}>Chưa thanh toán</option>
+                    <option value="paid"{% if orders_payment_filter == 'paid' %} selected{% endif %}>Đã thanh toán</option>
+                </select>
+            </div>
+
+            <div class="admin-form-field" style="margin-bottom:0;">
+                <label for="admin-orders-date-from">Từ ngày</label>
+                <input id="admin-orders-date-from" type="date" name="date_from"
+                       value="{{ orders_date_from }}" class="admin-form-control">
+            </div>
+
+            <div class="admin-form-field" style="margin-bottom:0;">
+                <label for="admin-orders-date-to">Đến ngày</label>
+                <input id="admin-orders-date-to" type="date" name="date_to"
+                       value="{{ orders_date_to }}" class="admin-form-control">
+            </div>
+
+            <div class="admin-orders-filter-actions">
+                <button type="submit" class="admin-primary-btn">
+                    <i class="bi bi-funnel"></i> Lọc
+                </button>
+                {% if orders_search_query or orders_status_filter or orders_payment_filter or orders_date_from or orders_date_to %}
+                <a href="{% url 'core:admin_orders' %}" class="admin-ghost-btn">
+                    <i class="bi bi-x"></i> Xóa
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+    </form>
+
+    <div class="admin-product-list-head admin-orders-list-head">
+        <div>
+            <span class="admin-section-eyebrow">Bảng dữ liệu</span>
+            <h4>Đang hiển thị {{ orders_page.object_list|length }} / {{ orders_total }} đơn hàng</h4>
+        </div>
+    </div>
+
+    <div class="admin-product-table-wrap">
+        <table class="admin-product-table admin-orders-table">
+            <thead>
+                <tr>
+                    <th>Mã đơn hàng</th>
+                    <th>Khách hàng</th>
+                    <th>Số điện thoại</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Thanh toán</th>
+                    <th>Ngày tạo</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>
+                        <div class="admin-product-name-cell">
+                            <strong>{{ order.order_code }}</strong>
+                            <span>#{{ order.id }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="admin-product-name-cell">
+                            <strong>{{ order.customer_name }}</strong>
+                            <span>{{ order.customer_email }}</span>
+                        </div>
+                    </td>
+                    <td>{{ order.receiver_phone }}</td>
+                    <td><strong>{{ order.total_price }}</strong></td>
+                    <td><span class="status-badge {{ order.status.badge_class }}">{{ order.status.label }}</span></td>
+                    <td><span class="status-badge {{ order.payment_status.badge_class }}">{{ order.payment_status.label }}</span></td>
+                    <td>{{ order.created_at }}</td>
+                    <td>
+                        <div class="admin-table-actions">
+                            <a href="{% url 'core:admin_order_detail' order.id %}" class="admin-table-btn edit">Chi tiết</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">
+                        <div class="admin-empty-card">Không có đơn hàng nào phù hợp với điều kiện hiện tại.</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if orders_page.paginator.num_pages > 1 %}
+        <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-top: 16px; flex-wrap: wrap;">
+            <span class="admin-field-hint">Trang {{ orders_page.number }} / {{ orders_page.paginator.num_pages }}</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                {% if orders_page.has_previous %}
+                    <a href="?page={{ orders_page.previous_page_number }}{{ orders_query_string }}" class="admin-ghost-btn">Trước</a>
+                {% endif %}
+
+                {% for page_number in orders_page.paginator.page_range %}
+                    {% if page_number == orders_page.number %}
+                        <span class="admin-primary-btn" style="pointer-events: none;">{{ page_number }}</span>
+                    {% elif page_number >= orders_page.number|add:'-2' and page_number <= orders_page.number|add:'2' %}
+                        <a href="?page={{ page_number }}{{ orders_query_string }}" class="admin-ghost-btn">{{ page_number }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if orders_page.has_next %}
+                    <a href="?page={{ orders_page.next_page_number }}{{ orders_query_string }}" class="admin-ghost-btn">Sau</a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends 'core/admin/base.html' %}
+{% load core_filters %}
+
+{% block admin_topbar_actions %}
+<a href="{% url 'core:admin_users' %}" class="admin-ghost-btn">
+    <i class="bi bi-person-badge"></i>
+    Quản lý người dùng
+</a>
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-panel">
+    <div class="admin-panel-header">
+        <div>
+            <h3>Tổng: <strong>{{ customers_total }}</strong> khách hàng đang hiển thị</h3>
+        </div>
+    </div>
+
+    <form method="get" class="admin-filter-bar" style="flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+        <div style="position:relative;flex:1;min-width:200px;">
+            <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none;font-size:14px;"></i>
+            <input type="text" name="search" value="{{ search_query }}" placeholder="Tìm tên, SĐT, email..." class="admin-form-control" style="padding-left:36px;">
+        </div>
+
+        <select name="type" class="admin-form-control" style="width:160px;">
+            <option value="" {% if not type_filter %}selected{% endif %}>Tất cả loại</option>
+            <option value="registered" {% if type_filter == 'registered' %}selected{% endif %}>Có tài khoản</option>
+            <option value="guest" {% if type_filter == 'guest' %}selected{% endif %}>Khách (Guest)</option>
+        </select>
+
+        <select name="sort" class="admin-form-control" style="width:180px;">
+            <option value="total_spent" {% if sort_by == 'total_spent' %}selected{% endif %}>Tổng chi tiêu</option>
+            <option value="order_count" {% if sort_by == 'order_count' %}selected{% endif %}>Số đơn hoàn thành</option>
+            <option value="last_order_at" {% if sort_by == 'last_order_at' %}selected{% endif %}>Lần mua gần nhất</option>
+        </select>
+
+        <button type="submit" class="admin-primary-btn">
+            <i class="bi bi-funnel"></i> Lọc
+        </button>
+        {% if search_query or type_filter %}
+        <a href="{% url 'core:admin_customers' %}" class="admin-ghost-btn">
+            <i class="bi bi-x"></i> Xóa bộ lọc
+        </a>
+        {% endif %}
+    </form>
+
+    <div class="admin-product-table-wrap">
+        <table class="admin-product-table admin-orders-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Khách hàng</th>
+                    <th>SĐT</th>
+                    <th>Email</th>
+                    <th>Loại</th>
+                    <th>Đơn hoàn thành</th>
+                    <th>Tổng chi tiêu</th>
+                    <th>Lần mua gần nhất</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr>
+                    <td style="color:#9ca3af;font-size:13px;">
+                        {{ customers_page.start_index|add:forloop.counter0 }}
+                    </td>
+                    <td>
+                        <div class="admin-product-name-cell" style="flex-direction:row;align-items:center;gap:10px;">
+                            {% if customer.user and customer.user.avatar %}
+                                <img src="{{ customer.user.avatar.url }}" alt="{{ customer.full_name }}"
+                                     style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                            {% else %}
+                                <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#ff8a00,#ff5a1f);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0;">
+                                    {{ customer.full_name|default:customer.phone|default:"?"|first|upper }}
+                                </div>
+                            {% endif %}
+                            <strong>{{ customer.full_name|default:"—" }}</strong>
+                        </div>
+                    </td>
+                    <td>
+                        {% if customer.phone %}
+                            <span style="font-family:monospace;">{{ customer.phone }}</span>
+                        {% else %}
+                            <span style="color:#9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ customer.email|default:"—" }}</td>
+                    <td>
+                        {% if customer.user_id %}
+                            <span class="status-badge success" style="font-size:11px;">Có tài khoản</span>
+                        {% else %}
+                            <span class="status-badge warning" style="font-size:11px;">Guest</span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ customer.order_count|default:0 }}</strong></td>
+                    <td>
+                        {% if customer.total_spent %}
+                            <strong>{{ customer.total_spent|vnd }}</strong>
+                        {% else %}
+                            <span style="color:#9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if customer.last_order_at %}
+                            {{ customer.last_order_at|date:"d/m/Y" }}
+                        {% else %}
+                            <span style="color:#9ca3af;">Chưa có</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="admin-table-actions">
+                            <a href="{% url 'core:admin_customer_detail' customer.id %}" class="admin-table-btn edit">Chi tiết</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9">
+                        <div class="admin-empty-card">Không tìm thấy khách hàng nào.</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if customers_page.paginator.num_pages > 1 %}
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;padding-top:16px;flex-wrap:wrap;">
+        <span class="admin-field-hint">Trang {{ customers_page.number }} / {{ customers_page.paginator.num_pages }}</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            {% if customers_page.has_previous %}
+                <a href="?page={{ customers_page.previous_page_number }}{{ query_string }}" class="admin-ghost-btn">Trước</a>
+            {% endif %}
+            {% for page_number in customers_page.paginator.page_range %}
+                {% if page_number == customers_page.number %}
+                    <span class="admin-primary-btn" style="pointer-events:none;">{{ page_number }}</span>
+                {% elif page_number >= customers_page.number|add:'-2' and page_number <= customers_page.number|add:'2' %}
+                    <a href="?page={{ page_number }}{{ query_string }}" class="admin-ghost-btn">{{ page_number }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if customers_page.has_next %}
+                <a href="?page={{ customers_page.next_page_number }}{{ query_string }}" class="admin-ghost-btn">Sau</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

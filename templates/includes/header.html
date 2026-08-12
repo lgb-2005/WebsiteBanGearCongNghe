@@ -1,0 +1,145 @@
+{% load static %}
+
+<header class="site-header">
+    <div class="site-header-top">
+        <div class="container site-header-container">
+            <a href="{% url 'core:home' %}" class="site-brand text-decoration-none">
+                <span class="site-brand-mark">
+                    <i class="bi bi-lightning-charge-fill"></i>
+                </span>
+                <span class="site-brand-copy">
+                    <strong>TECHGEAR</strong>
+                    <small>Gear công nghệ & gaming</small>
+                </span>
+            </a>
+
+            <form action="{% url 'products:search_products' %}" method="GET" class="site-search-form" id="siteSearchForm">
+                <div class="site-search-box">
+                    <i class="bi bi-search site-search-icon"></i>
+                    <input type="text" class="site-search-input" placeholder="Tìm kiếm sản phẩm, tay cầm, phụ kiện..." name="q" value="{{ request.GET.q|default:'' }}" id="siteSearchInput">
+                    <button class="site-search-button" type="submit">Tìm kiếm</button>
+                </div>
+            </form>
+
+            <div class="site-header-actions">
+                <a href="{% url 'cart:cart_detail' %}" class="site-action-card text-decoration-none">
+                    <span class="site-action-icon has-badge">
+                        <i class="bi bi-cart3"></i>
+                        <span class="site-action-badge" id="cart-count">{{ cart_count }}</span>
+                    </span>
+                    <span class="site-action-copy">
+                        <small>Giỏ hàng</small>
+                        <strong>Xem giỏ hàng của bạn</strong>
+                    </span>
+                </a>
+
+                {% if user.is_authenticated %}
+                    <div class="dropdown">
+                        <a href="#" class="site-account-trigger text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
+                            <span class="site-account-avatar">
+                                <i class="bi bi-person-fill"></i>
+                            </span>
+                            <span class="site-account-copy">
+                                <small>Tài khoản</small>
+                                <strong>{{ user.name|default:user.email }}</strong>
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end site-dropdown-menu">
+                            <li class="site-dropdown-user-info">
+                                <span class="site-dropdown-user-name">{{ user.name|default:user.email }}</span>
+                                <span class="site-dropdown-user-email">{{ user.email }}</span>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item site-dropdown-item" href="{% url 'accounts:profile' %}">
+                                    <i class="bi bi-person-circle"></i>
+                                    <span>Trang cá nhân</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item site-dropdown-item" href="{% url 'accounts:profile' %}#orders">
+                                    <i class="bi bi-bag-check"></i>
+                                    <span>Lịch sử mua hàng</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item site-dropdown-item" href="{% url 'accounts:profile' %}#wishlist">
+                                    <i class="bi bi-heart"></i>
+                                    <span>Sản phẩm yêu thích</span>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item site-dropdown-item is-danger js-logout-link" href="{% url 'accounts:logout' %}">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                    <span>Đăng xuất</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <div class="site-auth-buttons">
+                        <a href="{% url 'accounts:login' %}" class="site-outline-button text-decoration-none">Đăng nhập</a>
+                        <a href="{% url 'accounts:register' %}" class="site-solid-button text-decoration-none">Đăng ký</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <nav class="site-main-nav navbar navbar-expand-lg">
+        <div class="container site-header-container">
+            <button class="navbar-toggler site-menu-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#mainMenu" aria-controls="mainMenu" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="mainMenu">
+                <ul class="navbar-nav site-nav-list">
+                    {% for category in nav_categories %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'products:category_products' category.slug %}">{{ category.name }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const siteSearchForm = document.getElementById("siteSearchForm");
+    const siteSearchInput = document.getElementById("siteSearchInput");
+
+    if (siteSearchForm && siteSearchInput) {
+        siteSearchForm.addEventListener("submit", function (e) {
+            if (!siteSearchInput.value.trim()) {
+                e.preventDefault();
+                siteSearchInput.focus();
+            }
+        });
+    }
+
+    document.querySelectorAll(".js-logout-link").forEach((logoutLink) => {
+        logoutLink.addEventListener("click", async function (e) {
+            e.preventDefault();
+
+            try {
+                const response = await fetch(logoutLink.href, {
+                    method: "GET",
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = data.redirect_url || "/";
+                }
+            } catch (error) {
+                window.location.href = "/";
+            }
+        });
+    });
+});
+</script>

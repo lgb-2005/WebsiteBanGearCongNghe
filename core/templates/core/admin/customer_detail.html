@@ -1,0 +1,125 @@
+{% extends 'core/admin/base.html' %}
+{% load core_filters %}
+
+{% block admin_topbar_actions %}
+<a href="{% url 'core:admin_customers' %}" class="admin-ghost-btn">
+    <i class="bi bi-arrow-left"></i>
+    Quay lại danh sách
+</a>
+{% endblock %}
+
+{% block admin_content %}
+<div class="admin-orders-detail-layout">
+
+    <section class="admin-panel admin-panel-wide">
+        <div class="admin-panel-header">
+            <div style="display:flex;align-items:center;gap:16px;">
+                {% if customer.user and customer.user.avatar %}
+                    <img src="{{ customer.user.avatar.url }}" alt="{{ customer.full_name }}"
+                         style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                {% else %}
+                    <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#ff8a00,#ff5a1f);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:24px;flex-shrink:0;">
+                        {{ customer.full_name|default:customer.phone|default:"?"|first|upper }}
+                    </div>
+                {% endif %}
+                <div>
+                    <span class="admin-section-eyebrow">Hồ sơ khách hàng</span>
+                    <h3>{{ customer.full_name|default:"Chưa có tên" }}</h3>
+                    <p>{{ customer.phone|default:customer.email|default:"Không có thông tin liên hệ" }}</p>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                {% if customer.user_id %}
+                    <span class="status-badge success">Có tài khoản</span>
+                {% else %}
+                    <span class="status-badge warning">Guest</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="admin-order-detail-grid">
+            <article class="admin-order-info-card">
+                <span class="admin-section-eyebrow">Thông tin khách hàng</span>
+                <div class="admin-order-info-list">
+                    <div><strong>Họ tên</strong><span>{{ customer.full_name|default:"—" }}</span></div>
+                    <div><strong>Số điện thoại</strong><span>{{ customer.phone|default:"—" }}</span></div>
+                    <div><strong>Email</strong><span>{{ customer.email|default:"—" }}</span></div>
+                    <div><strong>Loại</strong>
+                        <span>
+                            {% if customer.user_id %}Có tài khoản{% else %}Khách (Guest){% endif %}
+                        </span>
+                    </div>
+                    {% if customer.user %}
+                    <div><strong>Tài khoản liên kết</strong>
+                        <span>
+                            <a href="{% url 'core:admin_user_detail' customer.user.id %}" style="color:#ff8a00;">
+                                {{ customer.user.email }}
+                            </a>
+                        </span>
+                    </div>
+                    {% endif %}
+                    <div><strong>Ngày tạo</strong><span>{{ customer.created_at|date:"d/m/Y H:i" }}</span></div>
+                </div>
+            </article>
+
+            <article class="admin-order-info-card">
+                <span class="admin-section-eyebrow">Thống kê mua hàng</span>
+                <div class="admin-order-info-list">
+                    <div><strong>Tổng đơn hàng</strong><span>{{ order_stats.total_orders|default:0 }}</span></div>
+                    <div><strong>Đơn hoàn thành</strong><span>{{ order_stats.completed|default:0 }}</span></div>
+                    <div><strong>Đơn đang xử lý</strong><span>{{ order_stats.processing|default:0 }}</span></div>
+                    <div><strong>Đơn đã hủy</strong><span>{{ order_stats.cancelled|default:0 }}</span></div>
+                    <div><strong>Tổng chi tiêu</strong>
+                        <span>
+                            {% if order_stats.total_spent %}{{ order_stats.total_spent|vnd }}{% else %}—{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="admin-panel admin-panel-wide">
+        <div class="admin-panel-header">
+            <div>
+                <h3>Lịch sử đơn hàng</h3>
+                <p>10 đơn hàng gần nhất của khách hàng này.</p>
+            </div>
+        </div>
+
+        {% if recent_orders %}
+        <div class="admin-product-table-wrap">
+            <table class="admin-product-table admin-orders-table">
+                <thead>
+                    <tr>
+                        <th>Mã đơn hàng</th>
+                        <th>Ngày đặt</th>
+                        <th>Giá trị</th>
+                        <th>Trạng thái</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in recent_orders %}
+                    <tr>
+                        <td><strong>{{ order.order_code }}</strong></td>
+                        <td>{{ order.created_at }}</td>
+                        <td><strong>{{ order.total_price }}</strong></td>
+                        <td><span class="status-badge {{ order.status_badge }}">{{ order.status_label }}</span></td>
+                        <td>
+                            <div class="admin-table-actions">
+                                <a href="{% url 'core:admin_order_detail' order.id %}" class="admin-table-btn edit">Xem chi tiết</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="admin-empty-card">Khách hàng này chưa có đơn hàng nào.</div>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}

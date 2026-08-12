@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Danh sách thương hiệu{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
+        <div>
+            <h1 class="h3 text-light mb-2">Quản lý thương hiệu</h1>
+            <p class="text-secondary mb-0">Danh sách các thương hiệu hiện có trong hệ thống.</p>
+        </div>
+        <a href="{% url 'products:brand_create' %}" class="btn btn-light">Thêm thương hiệu</a>
+    </div>
+
+    <div class="card bg-dark border-secondary shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên thương hiệu</th>
+                            <th>Số sản phẩm</th>
+                            <th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for brand in brands %}
+                            <tr>
+                                <td>{{ brand.id }}</td>
+                                <td>{{ brand.name }}</td>
+                                <td>{{ brand.product_count }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'products:brand_update' brand.id %}" class="btn btn-sm btn-outline-light">Sửa</a>
+                                    <a href="{% url 'products:brand_delete' brand.id %}" class="btn btn-sm btn-outline-danger">Xóa</a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-secondary">Chưa có thương hiệu nào.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>Sản phẩm yêu thích</h2>
+
+<div class="row">
+
+    {% for item in favorites %}
+
+    <div class="col-md-3">
+        <div class="card mb-3">
+
+            {% if item.product.main_image %}
+                <img src="{{ item.product.main_image.url }}" class="card-img-top">
+            {% else %}
+                <img src="/static/images/default.jpg" class="card-img-top">
+            {% endif %}
+
+            <div class="card-body">
+                <h5>{{ item.product.name }}</h5>
+
+                <p>{{ item.product.price }} đ</p>
+                <p>⭐ {{ item.product.rating }}/5</p>
+
+                <a href="{% url 'products:product_detail' item.product.slug %}"
+                   class="btn btn-primary">
+                    Xem chi tiết
+                </a>
+
+                <a href="{% url 'products:toggle_favorite' item.product.slug %}"
+                   class="btn btn-outline-danger mt-2">
+                    💔 Bỏ thích
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    {% empty %}
+    <div class="col-12">
+        <p>Chưa có sản phẩm yêu thích.</p>
+    </div>
+    {% endfor %}
+
+</div>
+
+{% endblock %}

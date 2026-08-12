@@ -1,0 +1,169 @@
+{% extends 'core/admin/base.html' %}
+{% load core_filters %}
+
+{% block admin_content %}
+<div class="admin-overview-grid admin-orders-stat-grid">
+    <article class="admin-stat-card accent-dark">
+        <span class="admin-stat-icon"><i class="bi bi-people"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Tổng người dùng</span>
+            <strong class="admin-stat-value">{{ users_stats.total }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-green">
+        <span class="admin-stat-icon"><i class="bi bi-person-check"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đang hoạt động</span>
+            <strong class="admin-stat-value">{{ users_stats.active }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-red-soft">
+        <span class="admin-stat-icon"><i class="bi bi-person-x"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đã khóa</span>
+            <strong class="admin-stat-value">{{ users_stats.inactive }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-orange">
+        <span class="admin-stat-icon"><i class="bi bi-shield-lock"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Quản trị viên</span>
+            <strong class="admin-stat-value">{{ users_stats.admin_count }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-blue">
+        <span class="admin-stat-icon"><i class="bi bi-person"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Người dùng thường</span>
+            <strong class="admin-stat-value">{{ users_stats.user_count }}</strong>
+        </div>
+    </article>
+</div>
+
+<section class="admin-panel">
+    <div class="admin-panel-header">
+        <div>
+            <h3>Danh sách người dùng</h3>
+            <p>Tìm kiếm, lọc và xem chi tiết tài khoản người dùng trên hệ thống.</p>
+        </div>
+    </div>
+
+    <form method="get" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:22px;">
+        <div style="flex:0 0 280px;">
+            <label for="admin-users-search" style="display:block;margin-bottom:8px;font-size:14px;font-weight:500;color:#374151;">Tìm kiếm</label>
+            <input id="admin-users-search" type="text" name="q" value="{{ users_search_query }}"
+                   class="admin-form-control" placeholder="Nhập tên, email hoặc số điện thoại">
+        </div>
+        <div style="flex:0 0 200px;">
+            <label for="admin-users-status" style="display:block;margin-bottom:8px;font-size:14px;font-weight:500;color:#374151;">Trạng thái</label>
+            <select id="admin-users-status" name="status" class="admin-form-control">
+                <option value="">Tất cả</option>
+                <option value="active"{% if users_status_filter == 'active' %} selected{% endif %}>Đang hoạt động</option>
+                <option value="inactive"{% if users_status_filter == 'inactive' %} selected{% endif %}>Đã khóa</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:10px;flex-shrink:0;padding-bottom:1px;">
+            <button type="submit" class="admin-primary-btn">
+                <i class="bi bi-search"></i>
+                Tìm kiếm
+            </button>
+            <a href="{% url 'core:admin_users' %}" class="admin-ghost-btn">Xóa lọc</a>
+        </div>
+    </form>
+
+    <div class="admin-product-list-head admin-orders-list-head">
+        <div>
+            <span class="admin-section-eyebrow">Bảng dữ liệu</span>
+            <h4>Đang hiển thị {{ users_page.object_list|length }} / {{ users_total }} người dùng</h4>
+        </div>
+    </div>
+
+    <div class="admin-product-table-wrap">
+        <table class="admin-product-table admin-orders-table">
+            <thead>
+                <tr>
+                    <th>Avatar</th>
+                    <th>Họ tên</th>
+                    <th>Email</th>
+                    <th>Số điện thoại</th>
+                    <th>Đơn hàng</th>
+                    <th>Tổng chi</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>
+                        {% if u.avatar %}
+                            <img src="{{ u.avatar.url }}" alt="{{ u.name }}"
+                                 style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+                        {% else %}
+                            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ff8a00,#ff5a1f);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;">
+                                {{ u.name|first|upper }}
+                            </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="admin-product-name-cell">
+                            <strong>{{ u.name }}</strong>
+                            <span>Tham gia {{ u.date_joined|date:"d/m/Y" }}</span>
+                        </div>
+                    </td>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.phone|default:"—" }}</td>
+                    <td><strong>{{ u.order_count }}</strong></td>
+                    <td>
+                        {% if u.total_spent %}
+                            <strong>{{ u.total_spent|vnd }}</strong>
+                        {% else %}
+                            <span style="color:#9ca3af;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_active %}
+                            <span class="status-badge success">Hoạt động</span>
+                        {% else %}
+                            <span class="status-badge danger">Đã khóa</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="admin-table-actions">
+                            <a href="{% url 'core:admin_user_detail' u.id %}" class="admin-table-btn edit">Chi tiết</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9">
+                        <div class="admin-empty-card">Không có người dùng nào phù hợp với điều kiện hiện tại.</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if users_page.paginator.num_pages > 1 %}
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;padding-top:16px;flex-wrap:wrap;">
+        <span class="admin-field-hint">Trang {{ users_page.number }} / {{ users_page.paginator.num_pages }}</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            {% if users_page.has_previous %}
+                <a href="?page={{ users_page.previous_page_number }}{{ users_query_string }}" class="admin-ghost-btn">Trước</a>
+            {% endif %}
+            {% for page_number in users_page.paginator.page_range %}
+                {% if page_number == users_page.number %}
+                    <span class="admin-primary-btn" style="pointer-events:none;">{{ page_number }}</span>
+                {% elif page_number >= users_page.number|add:'-2' and page_number <= users_page.number|add:'2' %}
+                    <a href="?page={{ page_number }}{{ users_query_string }}" class="admin-ghost-btn">{{ page_number }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if users_page.has_next %}
+                <a href="?page={{ users_page.next_page_number }}{{ users_query_string }}" class="admin-ghost-btn">Sau</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

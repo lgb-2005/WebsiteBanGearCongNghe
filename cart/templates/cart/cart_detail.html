@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Giỏ hàng - TechGear{% endblock %}
+
+{% block extra_css %}
+<style>
+.cart-item-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+}
+
+.cart-item-copy {
+    min-width: 0;
+}
+
+.cart-item-title {
+    display: block;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.cart-remove-btn {
+    flex: 0 0 auto;
+    align-self: start;
+    white-space: nowrap;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="cart-page">
+    <div class="container cart-shell">
+        <div hidden>
+            {% csrf_token %}
+        </div>
+
+        <div class="cart-page-head">
+            <div>
+                <h1>Giỏ hàng của bạn</h1>
+                <p id="cartTotalQuantityText">{{ total_quantity }} sản phẩm đang có trong giỏ hàng.</p>
+            </div>
+            <a href="{% url 'core:home' %}" class="cart-back-link text-decoration-none">
+                <i class="bi bi-arrow-left"></i>
+                <span>Tiếp tục mua sắm</span>
+            </a>
+        </div>
+
+        <div id="cartEmptyState" class="cart-empty-state{% if not is_empty %} d-none{% endif %}">
+            <div class="cart-empty-icon">
+                <i class="bi bi-cart-x"></i>
+            </div>
+            <h2>Giỏ hàng đang trống</h2>
+            <p>Bạn chưa thêm sản phẩm nào. Hãy khám phá các sản phẩm mới nhất tại TechGear.</p>
+            <a href="{% url 'core:home' %}" class="cart-empty-action text-decoration-none">Mua sắm ngay</a>
+        </div>
+
+        <div id="cartContent" class="cart-layout{% if is_empty %} d-none{% endif %}">
+            <div class="cart-items-panel" id="cartItemsPanel">
+                {% for item in items %}
+                <article class="cart-item-card" data-cart-item data-product-id="{{ item.product.id }}">
+                    <div class="cart-item-media-wrap">
+                        {% if item.product.image_urls %}
+                        <img src="{{ item.product.image_urls.0 }}" alt="{{ item.product.name }}" class="cart-item-media">
+                        {% elif item.product.image_url %}
+                        <img src="{{ item.product.image_url }}" alt="{{ item.product.name }}" class="cart-item-media">
+                        {% else %}
+                        <img src="{% static 'images/banner1.jpg' %}" alt="{{ item.product.name }}" class="cart-item-media">
+                        {% endif %}
+                    </div>
+                    <div class="cart-item-main">
+                        <div class="cart-item-top">
+                            <div class="cart-item-copy">
+                                <a href="{% url 'products:product_detail' item.product.slug %}" class="cart-item-title text-decoration-none">{{ item.product.name }}</a>
+                                <div class="cart-item-meta">
+                                    <span>{{ item.product.brand.name|default:'TechGear' }}</span>
+                                    <span>|</span>
+                                    <span>Tồn kho: {{ item.product.stock }}</span>
+                                </div>
+                            </div>
+                            <button type="button" class="cart-remove-btn" data-cart-remove data-product-id="{{ item.product.id }}">
+                                <i class="bi bi-trash3"></i>
+                                <span>Xóa</span>
+                            </button>
+                        </div>
+
+                        <div class="cart-item-bottom">
+                            <div class="cart-price-block">
+                                <span class="cart-price-label">Đơn giá</span>
+                                <strong data-cart-unit-price>{{ item.unit_price_display }}</strong>
+                            </div>
+
+                            <div class="cart-qty-form" data-cart-qty-group>
+                                <span class="cart-price-label">Số lượng</span>
+                                <div class="cart-qty-controls">
+                                    <button type="button" class="cart-qty-btn" data-cart-decrease data-product-id="{{ item.product.id }}" aria-label="Giảm số lượng">
+                                        <i class="bi bi-dash-lg"></i>
+                                    </button>
+                                    <input
+                                        id="qty-{{ item.product.id }}"
+                                        type="number"
+                                        min="0"
+                                        value="{{ item.quantity }}"
+                                        class="cart-qty-input"
+                                        data-cart-quantity-input
+                                        data-product-id="{{ item.product.id }}"
+                                    >
+                                    <button type="button" class="cart-qty-btn is-increase" data-cart-increase data-product-id="{{ item.product.id }}" aria-label="Tăng số lượng">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="cart-total-block">
+                                <span class="cart-price-label">Tạm tính</span>
+                                <strong data-cart-line-total>{{ item.line_total_display }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+
+            <aside class="cart-summary-panel">
+                <div class="cart-summary-card">
+                    <h2>Tóm tắt đơn hàng</h2>
+                    <div class="cart-summary-row">
+                        <span>Số lượng sản phẩm</span>
+                        <strong id="cartSummaryQuantity">{{ total_quantity }}</strong>
+                    </div>
+                    <div class="cart-summary-row">
+                        <span>Tạm tính</span>
+                        <strong id="cartSummarySubtotal">{{ subtotal_display }}</strong>
+                    </div>
+                    <div class="cart-summary-row is-total">
+                        <span>Tổng thanh toán</span>
+                        <strong id="cartSummaryTotal">{{ subtotal_display }}</strong>
+                    </div>
+                    <a
+                        href="{% url 'orders:checkout' %}"
+                        class="cart-checkout-btn text-decoration-none"
+                    >
+                        Thanh toán
+                    </a>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const cartItemsPanel = document.getElementById('cartItemsPanel');
+    const cartContent = document.getElementById('cartContent');
+    const cartEmptyState = document.getElementById('cartEmptyState');
+    const cartSummaryQuantity = document.getElementById('cartSummaryQuantity');
+    const cartSummarySubtotal = document.getElementById('cartSummarySubtotal');
+    const cartSummaryTotal = document.getElementById('cartSummaryTotal');
+    const cartTotalQuantityText = document.getElementById('cartTotalQuantityText');
+    const cartCountBadge = document.getElementById('cart-count');
+    const csrfTokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+
+    if (!cartItemsPanel || !csrfToken) {
+        return;
+    }
+
+    function updateSummary(data) {
+        if (cartSummaryQuantity) {
+            cartSummaryQuantity.textContent = data.total_quantity;
+        }
+        if (cartSummarySubtotal) {
+            cartSummarySubtotal.textContent = data.subtotal_display;
+        }
+        if (cartSummaryTotal) {
+            cartSummaryTotal.textContent = data.subtotal_display;
+        }
+        if (cartTotalQuantityText) {
+            cartTotalQuantityText.textContent = `${data.total_quantity} sản phẩm đang có trong giỏ hàng.`;
+        }
+        if (cartCountBadge) {
+            cartCountBadge.textContent = data.total_quantity;
+        }
+        if (cartContent && cartEmptyState) {
+            cartContent.classList.toggle('d-none', data.is_empty);
+            cartEmptyState.classList.toggle('d-none', !data.is_empty);
+        }
+    }
+
+    async function sendCartRequest(url, productId, quantity) {
+        const body = new URLSearchParams();
+        body.append('product_id', productId);
+        if (typeof quantity !== 'undefined') {
+            body.append('quantity', quantity);
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken,
+            },
+            body: body.toString(),
+        });
+
+        if (!response.ok) {
+            throw new Error('Cart request failed');
+        }
+
+        return response.json();
+    }
+
+    function applyItemUpdate(productId, data) {
+        const itemCard = cartItemsPanel.querySelector(`[data-cart-item][data-product-id="${productId}"]`);
+        updateSummary(data);
+
+        if (!itemCard) {
+            return;
+        }
+
+        if (data.removed) {
+            itemCard.remove();
+            return;
+        }
+
+        const quantityInput = itemCard.querySelector('[data-cart-quantity-input]');
+        const lineTotal = itemCard.querySelector('[data-cart-line-total]');
+
+        if (quantityInput) {
+            quantityInput.value = data.quantity;
+        }
+        if (lineTotal) {
+            lineTotal.textContent = data.line_total_display;
+        }
+    }
+
+    async function updateQuantity(productId, quantity) {
+        try {
+            const data = await sendCartRequest('{% url "cart:update_cart" %}', productId, quantity);
+            if (data.success) {
+                applyItemUpdate(productId, data);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function removeItem(productId) {
+        try {
+            const data = await sendCartRequest('{% url "cart:remove_cart" %}', productId);
+            if (data.success) {
+                applyItemUpdate(productId, data);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    cartItemsPanel.addEventListener('click', function (event) {
+        const decreaseButton = event.target.closest('[data-cart-decrease]');
+        const increaseButton = event.target.closest('[data-cart-increase]');
+        const removeButton = event.target.closest('[data-cart-remove]');
+
+        if (decreaseButton) {
+            const productId = decreaseButton.getAttribute('data-product-id');
+            const input = cartItemsPanel.querySelector(`[data-cart-quantity-input][data-product-id="${productId}"]`);
+            const currentQuantity = input ? parseInt(input.value || '0', 10) : 0;
+            updateQuantity(productId, Math.max(0, currentQuantity - 1));
+            return;
+        }
+
+        if (increaseButton) {
+            const productId = increaseButton.getAttribute('data-product-id');
+            const input = cartItemsPanel.querySelector(`[data-cart-quantity-input][data-product-id="${productId}"]`);
+            const currentQuantity = input ? parseInt(input.value || '0', 10) : 0;
+            updateQuantity(productId, currentQuantity + 1);
+            return;
+        }
+
+        if (removeButton) {
+            const productId = removeButton.getAttribute('data-product-id');
+            removeItem(productId);
+        }
+    });
+
+    cartItemsPanel.addEventListener('change', function (event) {
+        const quantityInput = event.target.closest('[data-cart-quantity-input]');
+        if (!quantityInput) {
+            return;
+        }
+
+        const productId = quantityInput.getAttribute('data-product-id');
+        const nextQuantity = Math.max(0, parseInt(quantityInput.value || '0', 10));
+        updateQuantity(productId, nextQuantity);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,374 @@
+{% extends 'core/admin/base.html' %}
+{% load order_filters %}
+
+{% block admin_content %}
+
+<!-- ============================================================
+     Section 1: KPI Cards
+     ============================================================ -->
+<div class="admin-analytics-grid admin-analytics-grid--4col">
+
+    <!-- Revenue KPI -->
+    <article class="admin-stat-card accent-dark">
+        <div class="admin-stat-icon"><i class="bi bi-currency-dollar"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Doanh thu tháng này</span>
+            <strong class="admin-stat-value">{{ summary.revenue_this_month|vnd }} đ</strong>
+            <div class="admin-stat-secondary">
+                {% if summary.revenue_growth_pct is not None %}
+                    {% if summary.revenue_growth_pct >= 0 %}
+                        <span class="admin-stat-trend positive">↑ +{{ summary.revenue_growth_pct }}% so với tháng trước</span>
+                    {% else %}
+                        <span class="admin-stat-trend negative">↓ {{ summary.revenue_growth_pct }}% so với tháng trước</span>
+                    {% endif %}
+                {% endif %}
+                <span class="admin-stat-trend neutral">All-time: {{ summary.revenue_all_time|vnd }} đ</span>
+            </div>
+        </div>
+    </article>
+
+    <!-- Order KPI -->
+    <article class="admin-stat-card accent-blue">
+        <div class="admin-stat-icon"><i class="bi bi-bag-check"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đơn hàng tháng này</span>
+            <strong class="admin-stat-value">{{ summary.orders_this_month }}</strong>
+            <div class="admin-stat-secondary">
+                <span class="admin-stat-trend positive">Hoàn thành: {{ summary.orders_completed }}</span>
+                <span class="admin-stat-trend neutral">Đang xử lý: {{ summary.orders_processing }}</span>
+            </div>
+        </div>
+    </article>
+
+    <!-- Customer KPI -->
+    <article class="admin-stat-card accent-green">
+        <div class="admin-stat-icon"><i class="bi bi-people"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Khách hàng</span>
+            <strong class="admin-stat-value">{{ ops.new_customers }}</strong>
+        </div>
+    </article>
+
+    <!-- Product KPI -->
+    <article class="admin-stat-card accent-orange">
+        <div class="admin-stat-icon"><i class="bi bi-box-seam"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Sản phẩm</span>
+            <strong class="admin-stat-value">{{ ops.total_products }}</strong>
+            <div class="admin-stat-secondary">
+                <span class="admin-stat-trend positive">Đang bán: {{ ops.active_products }}</span>
+                <span class="admin-stat-trend negative">Ngừng bán: {{ ops.inactive_products }}</span>
+            </div>
+        </div>
+    </article>
+
+</div>
+
+<!-- ============================================================
+     Section 2: Filter
+     ============================================================ -->
+<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+    <a href="{% url 'core:admin_analytics' %}" class="admin-analytics-btn-apply" style="text-decoration:none;font-size:13px;">
+        <i class="bi bi-graph-up-arrow"></i> View Analytics →
+    </a>
+</div>
+<form method="GET" class="admin-analytics-filter" id="overviewFilterForm">
+    <div class="admin-analytics-filter-group">
+        <label class="admin-analytics-filter-label">Kỳ</label>
+        <select name="period" class="admin-analytics-select">
+            <option value="day" {% if current_period == 'day' %}selected{% endif %}>Theo ngày</option>
+            <option value="month" {% if current_period == 'month' %}selected{% endif %}>Theo tháng</option>
+            <option value="quarter" {% if current_period == 'quarter' %}selected{% endif %}>Theo quý</option>
+            <option value="year" {% if current_period == 'year' %}selected{% endif %}>Theo năm</option>
+        </select>
+    </div>
+    <div class="admin-analytics-filter-group">
+        <label class="admin-analytics-filter-label">Từ ngày</label>
+        <input type="date" name="date_from" value="{{ current_date_from }}" class="admin-analytics-input">
+    </div>
+    <div class="admin-analytics-filter-group">
+        <label class="admin-analytics-filter-label">Đến ngày</label>
+        <input type="date" name="date_to" value="{{ current_date_to }}" class="admin-analytics-input">
+    </div>
+    <div class="admin-analytics-filter-group">
+        <label class="admin-analytics-filter-label">Top</label>
+        <select name="top_limit" class="admin-analytics-select">
+            <option value="5" {% if current_top_limit == 5 %}selected{% endif %}>Top 5</option>
+            <option value="10" {% if current_top_limit == 10 %}selected{% endif %}>Top 10</option>
+            <option value="20" {% if current_top_limit == 20 %}selected{% endif %}>Top 20</option>
+        </select>
+    </div>
+    <button type="submit" class="admin-analytics-btn-apply">Áp dụng</button>
+    <a href="?" class="admin-analytics-btn-reset">Reset</a>
+</form>
+
+<!-- ============================================================
+     Section 3: Revenue Chart
+     ============================================================ -->
+<div class="admin-analytics-chart-wrap">
+    <h3 class="admin-analytics-chart-title">Doanh thu theo thời gian</h3>
+    {% if revenue_data_json != '[]' %}
+        <div id="revenueChart"></div>
+    {% else %}
+        <p class="admin-analytics-empty">Chưa có dữ liệu doanh thu.</p>
+    {% endif %}
+</div>
+
+<!-- ============================================================
+     Section 4: Order Status Summary
+     ============================================================ -->
+<div class="admin-analytics-grid admin-analytics-grid--4col">
+
+    <article class="admin-stat-card accent-orange">
+        <div class="admin-stat-icon"><i class="bi bi-hourglass-split"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Chờ xử lý</span>
+            <strong class="admin-stat-value">{{ ops.order_status.pending }}</strong>
+        </div>
+    </article>
+
+    <article class="admin-stat-card accent-blue">
+        <div class="admin-stat-icon"><i class="bi bi-arrow-clockwise"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đang xử lý</span>
+            <strong class="admin-stat-value">{{ ops.order_status.processing }}</strong>
+        </div>
+    </article>
+
+    <article class="admin-stat-card accent-green">
+        <div class="admin-stat-icon"><i class="bi bi-check-circle"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Hoàn thành</span>
+            <strong class="admin-stat-value">{{ ops.order_status.completed }}</strong>
+        </div>
+    </article>
+
+    <article class="admin-stat-card accent-dark">
+        <div class="admin-stat-icon"><i class="bi bi-x-circle"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đã hủy</span>
+            <strong class="admin-stat-value">{{ ops.order_status.cancelled }}</strong>
+        </div>
+    </article>
+
+</div>
+
+<!-- ============================================================
+     Section 5: Top Selling + Low Stock
+     ============================================================ -->
+<div class="admin-analytics-grid admin-analytics-grid--2col">
+
+    <div class="admin-analytics-table-wrap">
+        <h4 class="admin-analytics-table-title"><i class="bi bi-trophy"></i> Top bán chạy</h4>
+        {% if top_selling %}
+        <table class="admin-analytics-table">
+            <thead><tr><th>Sản phẩm</th><th>Đã bán</th><th>Doanh thu</th></tr></thead>
+            <tbody>
+            {% for item in top_selling %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.total_sold }}</td>
+                <td>{{ item.total_revenue|vnd }} đ</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-analytics-empty">Chưa có dữ liệu.</p>
+        {% endif %}
+    </div>
+
+    <div class="admin-analytics-table-wrap">
+        <h4 class="admin-analytics-table-title"> Tồn kho</h4>
+        {% if ops.low_stock %}
+        <table class="admin-analytics-table">
+            <thead><tr><th>Sản phẩm</th><th>Tồn kho</th><th>Danh mục</th><th>Thương hiệu</th></tr></thead>
+            <tbody>
+            {% for product in ops.low_stock %}
+            <tr>
+                <td>{{ product.name }}</td>
+                <td>
+                    {% if product.stock == 0 %}
+                        <span class="admin-stat-trend negative">{{ product.stock }}</span>
+                    {% elif product.stock <= 5 %}
+                        <span class="admin-stat-trend negative">{{ product.stock }}</span>
+                    {% else %}
+                        <span class="admin-stat-trend neutral">{{ product.stock }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ product.category.name }}</td>
+                <td>{{ product.brand.name|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-analytics-empty">Không có sản phẩm tồn kho thấp.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- ============================================================
+     Section 6: Payment Methods + Recent Reviews
+     ============================================================ -->
+<div class="admin-analytics-grid admin-analytics-grid--2col">
+
+    <div class="admin-analytics-chart-wrap" style="margin-bottom:0;">
+        <h3 class="admin-analytics-chart-title">Phân bố phương thức thanh toán</h3>
+        {% if payment_data_json != '[]' %}
+            <div id="paymentChart"></div>
+        {% else %}
+            <p class="admin-analytics-empty">Chưa có dữ liệu thanh toán.</p>
+        {% endif %}
+    </div>
+
+    <div class="admin-analytics-table-wrap">
+        <h4 class="admin-analytics-table-title"><i class="bi bi-star"></i> Đánh giá gần đây</h4>
+        {% if ops.recent_reviews %}
+        <table class="admin-analytics-table">
+            <thead><tr><th>Sản phẩm</th><th>Khách hàng</th><th>Điểm</th><th>Thời gian</th></tr></thead>
+            <tbody>
+            {% for review in ops.recent_reviews %}
+            <tr>
+                <td>{{ review.product.name }}</td>
+                <td>{{ review.user.name|default:review.user.email }}</td>
+                <td>
+                    {% if review.rating >= 4 %}
+                        <span class="admin-stat-trend positive">{{ review.rating }}★</span>
+                    {% elif review.rating == 3 %}
+                        <span class="admin-stat-trend neutral">{{ review.rating }}★</span>
+                    {% else %}
+                        <span class="admin-stat-trend negative">{{ review.rating }}★</span>
+                    {% endif %}
+                </td>
+                <td style="white-space:nowrap;font-size:12px;color:#9ca3af;">{{ review.created_at|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-analytics-empty">Chưa có đánh giá nào.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- ============================================================
+     Section 7: Recent Orders
+     ============================================================ -->
+<div class="admin-analytics-table-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h4 class="admin-analytics-table-title" style="margin-bottom:0;"><i class="bi bi-receipt"></i> Đơn hàng gần đây</h4>
+        <a href="{% url 'core:admin_orders' %}" class="admin-analytics-btn-reset" style="font-size:12px;">Xem tất cả →</a>
+    </div>
+    {% if ops.recent_orders %}
+    <table class="admin-analytics-table">
+        <thead>
+            <tr>
+                <th>Mã đơn</th>
+                <th>Khách hàng</th>
+                <th>Tổng tiền</th>
+                <th>Thanh toán</th>
+                <th>Trạng thái</th>
+                <th>Thời gian</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for order in ops.recent_orders %}
+        <tr>
+            <td><code>{{ order.order_code }}</code></td>
+            <td>{{ order.customer.name|default:order.customer.email }}</td>
+            <td>{{ order.total_price|vnd }} đ</td>
+            <td>{{ order.get_payment_method_display }}</td>
+            <td>
+                {% if order.status == 'completed' %}
+                    <span class="admin-stat-trend positive">Hoàn thành</span>
+                {% elif order.status == 'cancelled' %}
+                    <span class="admin-stat-trend negative">Đã hủy</span>
+                {% elif order.status == 'processing' %}
+                    <span class="admin-stat-trend neutral">Đang xử lý</span>
+                {% else %}
+                    <span class="admin-stat-trend neutral">Chờ xử lý</span>
+                {% endif %}
+            </td>
+            <td style="white-space:nowrap;font-size:12px;color:#9ca3af;">{{ order.created_at|date:"d/m/Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="admin-analytics-empty">Chưa có đơn hàng nào.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block admin_extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
+<script>
+// @ts-nocheck
+(function () {
+    const revenueLabels  = {{ revenue_labels_json|safe }};
+    const revenueData    = {{ revenue_data_json|safe }};
+    const paymentLabels  = {{ payment_labels_json|safe }};
+    const paymentData    = {{ payment_data_json|safe }};
+    const paymentColors  = {{ payment_colors_json|safe }};
+
+    // --- Revenue Bar Chart ---
+    const revenueEl = document.getElementById('revenueChart');
+    if (revenueEl && revenueData.length) {
+        new ApexCharts(revenueEl, {
+            chart: { type: 'bar', height: 300, toolbar: { show: false }, fontFamily: 'inherit' },
+            series: [{ name: 'Doanh thu (đ)', data: revenueData }],
+            xaxis: { categories: revenueLabels, labels: { style: { fontSize: '12px' } } },
+            yaxis: { labels: { formatter: v => v.toLocaleString('vi-VN') + ' đ' } },
+            colors: ['#6366f1'],
+            plotOptions: { bar: { borderRadius: 6, columnWidth: '55%' } },
+            dataLabels: { enabled: false },
+            grid: { borderColor: '#f3f4f6' },
+            tooltip: { y: { formatter: v => v.toLocaleString('vi-VN') + ' đ' } },
+            legend: { show: false },
+        }).render();
+    }
+
+    // --- Payment Donut Chart ---
+    const paymentEl = document.getElementById('paymentChart');
+    if (paymentEl && paymentData.length) {
+        new ApexCharts(paymentEl, {
+            chart: { type: 'donut', height: 280, fontFamily: 'inherit' },
+            series: paymentData,
+            labels: paymentLabels,
+            colors: paymentColors,
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%',
+                        labels: {
+                            show: true,
+                            total: {
+                                show: true,
+                                label: 'Tổng đơn',
+                                fontSize: '13px',
+                                color: '#6b7280',
+                                formatter: w => w.globals.seriesTotals.reduce((a, b) => a + b, 0).toLocaleString('vi-VN')
+                            }
+                        }
+                    }
+                }
+            },
+            dataLabels: { enabled: false },
+            legend: {
+                position: 'bottom',
+                fontSize: '13px',
+                formatter: (label, opts) => {
+                    const pct = opts.w.globals.seriesPercent[opts.seriesIndex][0].toFixed(1);
+                    return `${label} — ${pct}%`;
+                }
+            },
+            tooltip: { y: { formatter: v => v.toLocaleString('vi-VN') + ' đơn' } },
+        }).render();
+    }
+})();
+</script>
+{% endblock %}

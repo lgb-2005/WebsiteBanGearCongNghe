@@ -1,0 +1,472 @@
+{% extends 'core/admin/base.html' %}
+{% load order_filters %}
+
+{% block admin_content %}
+
+<!-- ============================================================
+     Filter
+     ============================================================ -->
+<form method="GET" class="admin-analytics-filter" id="analyticsFilterForm">
+    <div class="admin-analytics-filter-group">
+        <label class="admin-analytics-filter-label">Kỳ</label>
+        <select name="period" class="admin-analytics-select">
+            <option value="day"     {% if current_period == 'day' %}selected{% endif %}>Theo ngày</option>
+            <option value="month"   {% if current_period == 'month' %}selected{% endif %}>Theo tháng</option>
+            <option value="quarter" {% if current_period == 'quarter' %}selected{% endif %}>Theo quý</option>
+            <option value="year"    {% if current_period == 'year' %}selected{% endif %}>Theo năm</option>
+        </select>
+    </div>
+    <div class="admin-analytics-filter-group">
+        <label class="admin-analytics-filter-label">Từ ngày</label>
+        <input type="date" name="date_from" value="{{ current_date_from }}" class="admin-analytics-input">
+    </div>
+    <div class="admin-analytics-filter-group">
+        <label class="admin-analytics-filter-label">Đến ngày</label>
+        <input type="date" name="date_to" value="{{ current_date_to }}" class="admin-analytics-input">
+    </div>
+    <div class="admin-analytics-filter-group">
+        <label class="admin-analytics-filter-label">Top</label>
+        <select name="top_limit" class="admin-analytics-select">
+            <option value="5"  {% if current_top_limit == 5 %}selected{% endif %}>Top 5</option>
+            <option value="10" {% if current_top_limit == 10 %}selected{% endif %}>Top 10</option>
+            <option value="20" {% if current_top_limit == 20 %}selected{% endif %}>Top 20</option>
+        </select>
+    </div>
+    <button type="submit" class="admin-analytics-btn-apply">Áp dụng</button>
+    <a href="{% url 'core:admin_analytics' %}" class="admin-analytics-btn-reset">Reset</a>
+</form>
+
+<!-- ============================================================
+     Section 1 — Conversion Funnel
+     ============================================================ -->
+<div class="admin-analytics-chart-wrap">
+    <h3 class="admin-analytics-chart-title">Phễu chuyển đổi</h3>
+    {% if funnel %}
+    <div id="funnelChart"></div>
+    {% else %}
+    <p class="admin-analytics-empty">Chưa có dữ liệu phễu chuyển đổi.</p>
+    {% endif %}
+</div>
+
+<!-- ============================================================
+     Section 2 — Traffic Trend
+     ============================================================ -->
+<div class="admin-analytics-chart-wrap">
+    <h3 class="admin-analytics-chart-title">Xu hướng truy cập theo thời gian</h3>
+    {% if traffic_sessions_json != '[]' %}
+    <div id="trafficChart"></div>
+    {% else %}
+    <p class="admin-analytics-empty">Chưa có dữ liệu truy cập.</p>
+    {% endif %}
+</div>
+
+<!-- ============================================================
+     Section 3 — Product Conversion
+     ============================================================ -->
+<div class="admin-analytics-table-wrap">
+    <h4 class="admin-analytics-table-title"><i class="bi bi-arrow-repeat"></i> {% if product_conv_is_filtered %}Kết quả phân tích chuyển đổi sản phẩm{% else %}Top sản phẩm theo chuyển đổi{% endif %}</h4>
+    <p style="font-size:12px;color:#9ca3af;margin:0 0 12px;">Tỷ lệ chuyển đổi = Lượt thanh toán / Lượt xem</p>
+    <form method="get" class="admin-analytics-filter" style="margin-bottom:16px;">
+        <input type="hidden" name="period" value="{{ current_period }}">
+        <input type="hidden" name="date_from" value="{{ current_date_from }}">
+        <input type="hidden" name="date_to" value="{{ current_date_to }}">
+        <input type="hidden" name="top_limit" value="{{ current_top_limit }}">
+        <div class="admin-analytics-filter-group">
+            <label class="admin-analytics-filter-label" for="product-conversion-search">Sản phẩm</label>
+            <input id="product-conversion-search" type="search" name="product_q" value="{{ product_query }}" class="admin-analytics-input" placeholder="Tên hoặc mã sản phẩm">
+        </div>
+        <div class="admin-analytics-filter-group">
+            <label class="admin-analytics-filter-label" for="product-conversion-category">Danh mục</label>
+            <select id="product-conversion-category" name="product_category" class="admin-analytics-select">
+                <option value="">Tất cả danh mục</option>
+                {% for category in product_categories %}
+                <option value="{{ category.id }}"{% if product_category_id == category.id %} selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="admin-analytics-filter-group">
+            <label class="admin-analytics-filter-label" for="product-conversion-sort">Sắp xếp</label>
+            <select id="product-conversion-sort" name="product_sort" class="admin-analytics-select">
+                <option value="views_desc"{% if product_sort == 'views_desc' %} selected{% endif %}>Lượt xem cao nhất</option>
+                <option value="cart_desc"{% if product_sort == 'cart_desc' %} selected{% endif %}>Thêm giỏ cao nhất</option>
+                <option value="checkout_desc"{% if product_sort == 'checkout_desc' %} selected{% endif %}>Checkout cao nhất</option>
+                <option value="conversion_desc"{% if product_sort == 'conversion_desc' %} selected{% endif %}>Chuyển đổi cao nhất</option>
+                <option value="conversion_asc"{% if product_sort == 'conversion_asc' %} selected{% endif %}>Chuyển đổi thấp nhất</option>
+            </select>
+        </div>
+        <button type="submit" class="admin-analytics-btn-apply">Áp dụng</button>
+        <a href="{% url 'core:admin_analytics' %}?period={{ current_period }}&amp;date_from={{ current_date_from }}&amp;date_to={{ current_date_to }}&amp;top_limit={{ current_top_limit }}" class="admin-analytics-btn-reset">Xóa lọc sản phẩm</a>
+    </form>
+    {% if product_conv %}
+    <table class="admin-analytics-table">
+        <thead>
+            <tr>
+                <th>Sản phẩm</th>
+                <th>Mã SP</th>
+                <th>Danh mục</th>
+                <th>Lượt xem</th>
+                <th>Thêm giỏ hàng</th>
+                <th>Thanh toán</th>
+                <th>Tỷ lệ chuyển đổi</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in product_conv %}
+        <tr>
+            <td>{{ row.product.name }}</td>
+            <td>{{ row.product.product_code }}</td>
+            <td>{{ row.product.category.name }}</td>
+            <td>{{ row.views }}</td>
+            <td>{{ row.cart }}</td>
+            <td>{{ row.checkout }}</td>
+            <td>
+                {% if row.conv_rate >= 10 %}
+                    <span class="admin-stat-trend positive">{{ row.conv_rate }}%</span>
+                {% elif row.conv_rate >= 3 %}
+                    <span class="admin-stat-trend neutral">{{ row.conv_rate }}%</span>
+                {% else %}
+                    <span class="admin-stat-trend negative">{{ row.conv_rate }}%</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="admin-analytics-empty">Không tìm thấy sản phẩm hoặc dữ liệu hành vi phù hợp.</p>
+    {% endif %}
+</div>
+
+<!-- ============================================================
+     Section 4 — Customer Journey
+     ============================================================ -->
+<div class="admin-analytics-grid admin-analytics-grid--4col">
+
+    <article class="admin-stat-card accent-blue">
+        <div class="admin-stat-icon"><i class="bi bi-lightning"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Sự kiện TB / Phiên</span>
+            <strong class="admin-stat-value">{{ journey.avg_events_per_session }}</strong>
+        </div>
+    </article>
+
+    <article class="admin-stat-card accent-dark">
+        <div class="admin-stat-icon"><i class="bi bi-eye"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Lượt xem TB trước thanh toán</span>
+            <strong class="admin-stat-value">{{ journey.avg_views_before_checkout }}</strong>
+            <div class="admin-stat-secondary">
+                <span class="admin-stat-trend neutral">Trung bình / session</span>
+            </div>
+        </div>
+    </article>
+
+    <article class="admin-stat-card accent-green">
+        <div class="admin-stat-icon"><i class="bi bi-cart-plus"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Lượt thêm giỏ TB trước thanh toán</span>
+            <strong class="admin-stat-value">{{ journey.avg_cart_before_checkout }}</strong>
+            <div class="admin-stat-secondary">
+                <span class="admin-stat-trend neutral">Trung bình / session</span>
+            </div>
+        </div>
+    </article>
+
+    <article class="admin-stat-card accent-orange">
+        <div class="admin-stat-icon"><i class="bi bi-bag-check"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Phiên đến bước thanh toán</span>
+            <strong class="admin-stat-value">{{ journey.checkout_sessions_count }}</strong>
+        </div>
+    </article>
+
+</div>
+
+<!-- ============================================================
+     Section 5 + 6 — Event Distribution & Product Interest
+     ============================================================ -->
+<section class="admin-analytics-insights">
+    <div class="admin-analytics-insights-header">
+        <div>
+            <span class="admin-analytics-insights-eyebrow">Tương tác sản phẩm</span>
+            <h3>Hành vi và mức độ quan tâm</h3>
+            <p>Tổng quan các hành động nổi bật và sản phẩm được quan tâm trong kỳ đã chọn.</p>
+        </div>
+    </div>
+
+    <div class="admin-analytics-insights-grid">
+        <article class="admin-analytics-insight-card admin-analytics-behavior-card">
+            <div class="admin-analytics-insight-card-header">
+                <div>
+                    <h4><i class="bi bi-pie-chart"></i> Phân bố hành vi người dùng</h4>
+                    <p>Tỷ trọng các sự kiện được ghi nhận.</p>
+                </div>
+            </div>
+            {% if event_dist_data_json != '[]' %}
+            <div id="eventDistChart" class="admin-analytics-event-chart"></div>
+            {% else %}
+            <p class="admin-analytics-empty">Chưa có dữ liệu sự kiện.</p>
+            {% endif %}
+        </article>
+
+        <article class="admin-analytics-insight-card admin-analytics-interest-card">
+            <div class="admin-analytics-insight-card-header">
+                <div>
+                    <h4><i class="bi bi-star-fill"></i> Mức độ quan tâm sản phẩm</h4>
+                    <p>Top sản phẩm theo từng hành động chính.</p>
+                </div>
+            </div>
+
+            <div class="admin-product-interest-grid">
+                <section class="admin-product-interest-panel interest-viewed">
+                    <div class="admin-product-interest-heading">
+                        <span class="admin-product-interest-icon"><i class="bi bi-eye"></i></span>
+                        <div>
+                            <h5>Xem nhiều</h5>
+                            <p>Lượt xem sản phẩm</p>
+                        </div>
+                    </div>
+                    <ol class="admin-product-interest-list">
+                        {% for item in interest.top_viewed %}
+                        <li>
+                            <span class="admin-product-interest-rank">{{ forloop.counter }}</span>
+                            <span class="admin-product-interest-name" title="{{ item.product.name }}">{{ item.product.name }}</span>
+                            <strong class="admin-product-interest-metric">{{ item.view_count }}</strong>
+                        </li>
+                        {% empty %}
+                        <li class="admin-product-interest-empty">Chưa có dữ liệu.</li>
+                        {% endfor %}
+                    </ol>
+                </section>
+
+                <section class="admin-product-interest-panel interest-cart">
+                    <div class="admin-product-interest-heading">
+                        <span class="admin-product-interest-icon"><i class="bi bi-cart-plus"></i></span>
+                        <div>
+                            <h5>Thêm giỏ</h5>
+                            <p>Lượt thêm vào giỏ</p>
+                        </div>
+                    </div>
+                    <ol class="admin-product-interest-list">
+                        {% for item in interest.top_cart %}
+                        <li>
+                            <span class="admin-product-interest-rank">{{ forloop.counter }}</span>
+                            <span class="admin-product-interest-name" title="{{ item.product.name }}">{{ item.product.name }}</span>
+                            <strong class="admin-product-interest-metric">{{ item.add_count }}</strong>
+                        </li>
+                        {% empty %}
+                        <li class="admin-product-interest-empty">Chưa có dữ liệu.</li>
+                        {% endfor %}
+                    </ol>
+                </section>
+
+                <section class="admin-product-interest-panel interest-checkout">
+                    <div class="admin-product-interest-heading">
+                        <span class="admin-product-interest-icon"><i class="bi bi-bag-check"></i></span>
+                        <div>
+                            <h5>Thanh toán</h5>
+                            <p>Lượt đến bước thanh toán</p>
+                        </div>
+                    </div>
+                    <ol class="admin-product-interest-list">
+                        {% for item in interest.top_checkout %}
+                        <li>
+                            <span class="admin-product-interest-rank">{{ forloop.counter }}</span>
+                            <span class="admin-product-interest-name" title="{{ item.product.name }}">{{ item.product.name }}</span>
+                            <strong class="admin-product-interest-metric">{{ item.checkout_count }}</strong>
+                        </li>
+                        {% empty %}
+                        <li class="admin-product-interest-empty">Chưa có dữ liệu.</li>
+                        {% endfor %}
+                    </ol>
+                </section>
+            </div>
+        </article>
+    </div>
+</section>
+
+<!-- ============================================================
+     Section 7 + 8 — Abandoned Cart & Session Analytics
+     ============================================================ -->
+<div class="admin-analytics-grid admin-analytics-grid--2col">
+
+    <div class="admin-analytics-chart-wrap" style="margin-bottom:0;">
+        <h3 class="admin-analytics-chart-title">Giỏ hàng bị bỏ</h3>
+        <div class="admin-analytics-grid admin-analytics-grid--2col" style="margin-bottom:16px;">
+            <article class="admin-stat-card accent-orange" style="margin-bottom:0;">
+                <div class="admin-stat-icon"><i class="bi bi-cart"></i></div>
+                <div class="admin-stat-content">
+                    <span class="admin-stat-label">Phiên có thêm giỏ hàng</span>
+                    <strong class="admin-stat-value">{{ abandoned.cart_sessions }}</strong>
+                </div>
+            </article>
+            <article class="admin-stat-card accent-green" style="margin-bottom:0;">
+                <div class="admin-stat-icon"><i class="bi bi-bag-check"></i></div>
+                <div class="admin-stat-content">
+                    <span class="admin-stat-label">Phiên đến thanh toán</span>
+                    <strong class="admin-stat-value">{{ abandoned.checkout_sessions }}</strong>
+                </div>
+            </article>
+        </div>
+        <div class="admin-analytics-grid admin-analytics-grid--2col" style="margin-bottom:0;">
+            <article class="admin-stat-card accent-dark" style="margin-bottom:0;">
+                <div class="admin-stat-icon"><i class="bi bi-x-circle"></i></div>
+                <div class="admin-stat-content">
+                    <span class="admin-stat-label">Phiên bỏ giỏ hàng</span>
+                    <strong class="admin-stat-value">{{ abandoned.abandoned_sessions }}</strong>
+                </div>
+            </article>
+            <article class="admin-stat-card accent-blue" style="margin-bottom:0;">
+                <div class="admin-stat-icon"><i class="bi bi-percent"></i></div>
+                <div class="admin-stat-content">
+                    <span class="admin-stat-label">Tỷ lệ bỏ giỏ hàng</span>
+                    <strong class="admin-stat-value">{{ abandoned.abandoned_rate }}%</strong>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <div class="admin-analytics-chart-wrap" style="margin-bottom:0;">
+        <h3 class="admin-analytics-chart-title">Thống kê phiên truy cập</h3>
+        <div class="admin-analytics-grid admin-analytics-grid--2col" style="margin-bottom:16px;">
+            <article class="admin-stat-card accent-dark" style="margin-bottom:0;">
+                <div class="admin-stat-icon"><i class="bi bi-people"></i></div>
+                <div class="admin-stat-content">
+                    <span class="admin-stat-label">Tổng phiên truy cập</span>
+                    <strong class="admin-stat-value">{{ session_stats.total_sessions }}</strong>
+                </div>
+            </article>
+            <article class="admin-stat-card accent-blue" style="margin-bottom:0;">
+                <div class="admin-stat-icon"><i class="bi bi-lightning"></i></div>
+                <div class="admin-stat-content">
+                    <span class="admin-stat-label">Sự kiện TB / Phiên</span>
+                    <strong class="admin-stat-value">{{ session_stats.avg_events_per_session }}</strong>
+                </div>
+            </article>
+        </div>
+        <div class="admin-analytics-grid admin-analytics-grid--2col" style="margin-bottom:0;">
+            <article class="admin-stat-card accent-orange" style="margin-bottom:0;">
+                <div class="admin-stat-icon"><i class="bi bi-person-dash"></i></div>
+                <div class="admin-stat-content">
+                    <span class="admin-stat-label">Phiên khách vãng lai</span>
+                    <strong class="admin-stat-value">{{ session_stats.guest_sessions }}</strong>
+                </div>
+            </article>
+            <article class="admin-stat-card accent-green" style="margin-bottom:0;">
+                <div class="admin-stat-icon"><i class="bi bi-person-check"></i></div>
+                <div class="admin-stat-content">
+                    <span class="admin-stat-label">Phiên thành viên</span>
+                    <strong class="admin-stat-value">{{ session_stats.user_sessions }}</strong>
+                </div>
+            </article>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block admin_extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
+<script>
+// @ts-nocheck
+(function () {
+    // --- Data from Django context ---
+    const funnelSteps    = {{ funnel_json|safe }};
+    const trafficLabels  = {{ traffic_labels_json|safe }};
+    const trafficSessions= {{ traffic_sessions_json|safe }};
+    const trafficGuests  = {{ traffic_guests_json|safe }};
+    const trafficUsers   = {{ traffic_users_json|safe }};
+    const eventLabels    = {{ event_dist_labels_json|safe }};
+    const eventData      = {{ event_dist_data_json|safe }};
+    const eventColors    = {{ event_dist_colors_json|safe }};
+
+    // --- Section 1: Conversion Funnel (horizontal bar) ---
+    const funnelEl = document.getElementById('funnelChart');
+    if (funnelEl && funnelSteps.length) {
+        const labelMap = {'Sessions':'Phiên truy cập','View Product':'Xem sản phẩm','Add To Cart':'Thêm giỏ hàng','Checkout':'Thanh toán','Paid':'Đã thanh toán'};
+        const funnelLabels = funnelSteps.map(s => labelMap[s.label] || s.label);
+        const funnelCounts = funnelSteps.map(s => s.count);
+        new ApexCharts(funnelEl, {
+            chart: { type: 'bar', height: 280, toolbar: { show: false }, fontFamily: 'inherit' },
+            plotOptions: { bar: { horizontal: true, borderRadius: 6, distributed: true } },
+            series: [{ name: 'Phiên', data: funnelCounts }],
+            xaxis: { categories: funnelLabels, labels: { style: { fontSize: '12px' } } },
+            yaxis: { labels: { style: { fontSize: '12px', fontWeight: 600 } } },
+            colors: ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981'],
+            dataLabels: {
+                enabled: true,
+                formatter: (val, opts) => {
+                    const step = funnelSteps[opts.dataPointIndex];
+                    return step.rate !== null ? `${val.toLocaleString('vi-VN')} (${step.rate}%)` : val.toLocaleString('vi-VN');
+                },
+                style: { fontSize: '12px' },
+            },
+            legend: { show: false },
+            grid: { borderColor: '#f3f4f6' },
+            tooltip: { y: { formatter: v => v.toLocaleString('vi-VN') + ' phiên' } },
+        }).render();
+    }
+
+    // --- Section 2: Traffic Trend (area) ---
+    const trafficEl = document.getElementById('trafficChart');
+    if (trafficEl && trafficSessions.length) {
+        new ApexCharts(trafficEl, {
+            chart: { type: 'area', height: 300, toolbar: { show: false }, fontFamily: 'inherit' },
+            series: [
+                { name: 'Tổng phiên', data: trafficSessions },
+                { name: 'Vãng lai',  data: trafficGuests },
+                { name: 'Thành viên', data: trafficUsers },
+            ],
+            xaxis: { categories: trafficLabels, labels: { style: { fontSize: '12px' } } },
+            yaxis: { labels: { formatter: v => v.toLocaleString('vi-VN') } },
+            colors: ['#6366f1', '#f59e0b', '#10b981'],
+            stroke: { curve: 'smooth', width: 2 },
+            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.03 } },
+            dataLabels: { enabled: false },
+            grid: { borderColor: '#f3f4f6' },
+            legend: { position: 'top', fontSize: '12px' },
+            tooltip: { y: { formatter: v => v.toLocaleString('vi-VN') } },
+        }).render();
+    }
+
+    // --- Section 5: Event Distribution (donut) ---
+    const eventEl = document.getElementById('eventDistChart');
+    if (eventEl && eventData.length) {
+        new ApexCharts(eventEl, {
+            chart: { type: 'donut', height: 300, fontFamily: 'inherit' },
+            series: eventData,
+            labels: eventLabels,
+            colors: eventColors,
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%',
+                        labels: {
+                            show: true,
+                            total: {
+                                show: true,
+                                label: 'Tổng sự kiện',
+                                fontSize: '13px',
+                                color: '#6b7280',
+                                formatter: w => w.globals.seriesTotals.reduce((a, b) => a + b, 0).toLocaleString('vi-VN'),
+                            },
+                        },
+                    },
+                },
+            },
+            dataLabels: { enabled: false },
+            legend: {
+                position: 'bottom',
+                fontSize: '13px',
+                formatter: (label, opts) => {
+                    const pct = opts.w.globals.seriesPercent[opts.seriesIndex][0].toFixed(1);
+                    return `${label} — ${pct}%`;
+                },
+            },
+            tooltip: { y: { formatter: v => v.toLocaleString('vi-VN') + ' sự kiện' } },
+        }).render();
+    }
+})();
+</script>
+{% endblock %}

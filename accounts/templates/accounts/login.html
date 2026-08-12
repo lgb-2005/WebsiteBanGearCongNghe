@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Đăng Nhập - TechGear{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/css/login.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="login-page">
+    <div class="login-container">
+        <div class="login-layout">
+            <div class="login-intro-panel">
+                <span class="login-badge">TechGear Members</span>
+                <h1 class="login-main-title">Chào mừng bạn quay lại</h1>
+                <p class="login-subtitle">Đăng nhập để theo dõi đơn hàng, quản lý tài khoản và tiếp tục trải nghiệm mua sắm nhanh chóng trên TechGear.</p>
+
+                <div class="login-feature-list">
+                    <div class="login-feature-item">
+                        <i class="bi bi-bag-check"></i>
+                        <div>
+                            <strong>Theo dõi đơn hàng</strong>
+                            <span>Kiểm tra trạng thái xử lý và lịch sử mua sắm của bạn ở một nơi duy nhất.</span>
+                        </div>
+                    </div>
+                    <div class="login-feature-item">
+                        <i class="bi bi-heart"></i>
+                        <div>
+                            <strong>Quản lý sản phẩm yêu thích</strong>
+                            <span>Lưu lại những sản phẩm bạn quan tâm để quay lại nhanh chóng bất cứ lúc nào.</span>
+                        </div>
+                    </div>
+                    <div class="login-feature-item">
+                        <i class="bi bi-lightning-charge"></i>
+                        <div>
+                            <strong>Thanh toán thuận tiện hơn</strong>
+                            <span>Sử dụng sẵn thông tin tài khoản để mua hàng nhanh, gọn và chính xác hơn.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="login-form-panel">
+                <div class="login-form-header">
+                    <h2 class="login-form-title">Đăng nhập tài khoản</h2>
+                    <p class="login-form-desc">Nhập thông tin đăng nhập của bạn để tiếp tục sử dụng đầy đủ các tiện ích dành riêng cho thành viên.</p>
+                </div>
+
+                <form method="POST" class="login-form" id="loginForm" action="{% url 'accounts:login' %}">
+                    {% csrf_token %}
+
+                    <div class="form-status" id="loginStatus" hidden></div>
+
+                    <div class="login-form-grid">
+                        <div class="input-group full-width">
+                            <label for="email">Email đăng nhập <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-envelope"></i>
+                                <input type="email" id="email" name="email" class="form-input" placeholder="Email của bạn" required>
+                            </div>
+                            <div class="field-error" data-error="email"></div>
+                        </div>
+
+                        <div class="input-group full-width">
+                            <label for="password">Mật khẩu <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-lock"></i>
+                                <input type="password" id="password" name="password" class="form-input" placeholder="Nhập mật khẩu" required>
+                            </div>
+                            <div class="field-error" data-error="password"></div>
+                        </div>
+                    </div>
+
+                    <div class="login-support-row">
+                        <div class="login-support-card">
+                            <i class="bi bi-shield-lock"></i>
+                            <span>Thông tin đăng nhập của bạn luôn được bảo vệ an toàn.</span>
+                        </div>
+                    </div>
+
+                    <div class="login-actions">
+                        <button type="submit" class="btn-login" id="loginSubmitBtn">Đăng nhập</button>
+                    </div>
+                </form>
+
+                <div class="register-link">
+                    Bạn chưa có tài khoản?
+                    <a href="{% url 'accounts:register' %}">Đăng ký ngay</a>
+                </div>
+            </div>
+        </div>
+ 
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const loginForm = document.getElementById("loginForm");
+    if (!loginForm) return;
+
+    const statusBox = document.getElementById("loginStatus");
+    const submitBtn = document.getElementById("loginSubmitBtn");
+
+    function clearErrors() {
+        loginForm.querySelectorAll(".field-error").forEach((el) => {
+            el.innerText = "";
+        });
+    }
+
+    function showStatus(message, type) {
+        statusBox.hidden = false;
+        statusBox.className = `form-status ${type}`;
+        statusBox.innerText = message;
+    }
+
+    loginForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        clearErrors();
+        statusBox.hidden = true;
+        submitBtn.disabled = true;
+
+        try {
+            const response = await fetch(loginForm.action, {
+                method: "POST",
+                body: new FormData(loginForm),
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showStatus(data.message, "success");
+                window.location.href = data.redirect_url || "/";
+                return;
+            }
+
+            showStatus(data.message || "Đăng nhập chưa thành công.", "error");
+        } catch (error) {
+            showStatus("Không thể đăng nhập lúc này. Vui lòng thử lại sau.", "error");
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

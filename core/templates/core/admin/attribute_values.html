@@ -1,0 +1,420 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_topbar_actions %}
+{% if editing_value %}
+    <a href="{% url 'core:admin_attribute_values' %}" class="admin-ghost-btn">
+        <i class="bi bi-arrow-counterclockwise"></i>
+        Tạo mới giá trị thuộc tính
+    </a>
+{% endif %}
+<a href="#attribute-value-form" class="admin-primary-btn">
+    <i class="bi bi-palette"></i>
+    {{ editing_value|yesno:"Cập nhật giá trị thuộc tính,Thêm giá trị thuộc tính" }}
+</a>
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-panel admin-panel-large">
+    <div class="admin-products-layout admin-brands-layout">
+        <div class="admin-product-form-card" id="attribute-value-form">
+            <div class="admin-product-form-head">
+                <div>
+                    <span class="admin-section-eyebrow">Biểu mẫu giá trị thuộc tính</span>
+                    <h4>{{ editing_value|yesno:"Cập nhật giá trị thuộc tính,Tạo giá trị thuộc tính mới" }}</h4>
+                </div>
+                {% if editing_value %}
+                    <a href="{% url 'core:admin_attribute_values' %}" class="admin-form-cancel">Hủy chỉnh sửa</a>
+                {% endif %}
+            </div>
+
+            <form method="post" action="{% if editing_value %}{% url 'core:admin_attribute_value_update' editing_value.id %}{% else %}{% url 'core:admin_attribute_value_create' %}{% endif %}" class="admin-product-form">
+                {% csrf_token %}
+
+                {% if attribute_value_form.non_field_errors %}
+                    <div class="admin-form-errors">{{ attribute_value_form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="admin-form-grid">
+                    <div class="admin-form-field full-width">
+                        <label for="{{ attribute_value_form.group.id_for_label }}">Nhóm thuộc tính</label>
+                        {{ attribute_value_form.group }}
+                        <div class="admin-field-error">{{ attribute_value_form.group.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field full-width">
+                        <label for="{{ attribute_value_form.value.id_for_label }}">Giá trị</label>
+                        {{ attribute_value_form.value }}
+                        <div class="admin-field-error">{{ attribute_value_form.value.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="{{ attribute_value_form.slug.id_for_label }}">Slug</label>
+                        {{ attribute_value_form.slug }}
+                        <div class="admin-field-error">{{ attribute_value_form.slug.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="{{ attribute_value_form.display_order.id_for_label }}">Thứ tự hiển thị</label>
+                        {{ attribute_value_form.display_order }}
+                        <div class="admin-field-error">{{ attribute_value_form.display_order.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="{{ attribute_value_form.hex_color.id_for_label }}">Màu HEX</label>
+                        {{ attribute_value_form.hex_color }}
+                        <div class="admin-field-error">{{ attribute_value_form.hex_color.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="{{ attribute_value_form.is_active.id_for_label }}">Đang hoạt động</label>
+                        {{ attribute_value_form.is_active }}
+                        <div class="admin-field-error">{{ attribute_value_form.is_active.errors }}</div>
+                    </div>
+                </div>
+
+                <div class="admin-form-actions">
+                    <button type="submit" class="admin-primary-btn">
+                        <i class="bi bi-check2-circle"></i>
+                        {{ editing_value|yesno:"Lưu cập nhật,Tạo giá trị thuộc tính" }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="admin-product-list-card">
+            <div class="admin-product-list-head">
+                <div>
+                    <span class="admin-section-eyebrow">Danh sách giá trị thuộc tính</span>
+                    <h4>Giá trị hiện có</h4>
+                </div>
+                <span class="admin-list-count">{{ attribute_values_total }} giá trị</span>
+            </div>
+
+            <form method="get" class="admin-search-bar">
+                <div class="admin-form-field">
+                    <label for="attr-value-search-input">Tìm kiếm giá trị</label>
+                    <input id="attr-value-search-input" type="text" name="q" value="{{ attribute_values_search_query }}" class="admin-form-control" placeholder="Nhập tên giá trị hoặc slug">
+                </div>
+                <div class="admin-form-field">
+                    <label for="attr-value-group-filter">Lọc theo nhóm thuộc tính</label>
+                    <select id="attr-value-group-filter" name="group" class="admin-form-control">
+                        <option value="">Tất cả nhóm</option>
+                        {% for group in attribute_values_filter_groups %}
+                            <option value="{{ group.id }}"{% if attribute_values_group_filter == group.id|stringformat:'s' %} selected{% endif %}>{{ group.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="admin-primary-btn">Lọc</button>
+                <a href="{% url 'core:admin_attribute_values' %}" class="admin-ghost-btn">Xóa lọc</a>
+            </form>
+
+            <div class="admin-product-table-wrap">
+                <table class="admin-product-table admin-brand-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Giá trị</th>
+                            <th>Nhóm</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for attribute_value in attribute_values %}
+                            <tr>
+                                <td>{{ attribute_value.id }}</td>
+                                <td>
+                                    <div class="admin-product-name-cell">
+                                        <button type="button" class="admin-attr-value-link" data-products-url="{% url 'core:admin_attribute_value_products' attribute_value.id %}" data-value-name="{{ attribute_value.value }}" data-group-name="{{ attribute_value.group.name }}">
+                                            {{ attribute_value.value }}
+                                        </button>
+                                        <span>{{ attribute_value.slug }}{% if attribute_value.hex_color %} · {{ attribute_value.hex_color }}{% endif %} · {{ attribute_value.product_usage_count }} sản phẩm</span>
+                                    </div>
+                                </td>
+                                <td>{{ attribute_value.group.name }}</td>
+                                <td>
+                                    <span class="status-badge {% if attribute_value.is_active %}success{% else %}warning{% endif %}">
+                                        {{ attribute_value.is_active|yesno:"Hoạt động,Vô hiệu hóa" }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="admin-table-actions">
+                                        <a href="{% url 'core:admin_attribute_values' %}?edit_value={{ attribute_value.id }}{{ attribute_values_edit_query_string }}#attribute-value-form" class="admin-table-btn edit">Sửa</a>
+                                        <form method="post" action="{% url 'core:admin_attribute_value_delete' attribute_value.id %}" onsubmit="return confirm('Nếu giá trị đang được dùng, hệ thống sẽ tự vô hiệu hóa thay vì xóa. Tiếp tục?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="admin-table-btn delete">{{ attribute_value.product_usage_count|yesno:"Vô hiệu hóa,Xóa" }}</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5">
+                                    <div class="admin-empty-state">
+                                        <i class="bi bi-palette"></i>
+                                        <strong>Không tìm thấy giá trị thuộc tính nào</strong>
+                                        <span>Hãy thử điều chỉnh bộ lọc hoặc tạo giá trị mới.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if attribute_values_page.paginator.num_pages > 1 %}
+                <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-top: 16px; flex-wrap: wrap;">
+                    <span class="admin-field-hint">Trang {{ attribute_values_page.number }} / {{ attribute_values_page.paginator.num_pages }}</span>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        {% if attribute_values_page.has_previous %}
+                            <a href="?page={{ attribute_values_page.previous_page_number }}{{ attribute_values_query_string }}" class="admin-ghost-btn">Trước</a>
+                        {% endif %}
+
+                        {% for page_number in attribute_values_page.paginator.page_range %}
+                            {% if page_number == attribute_values_page.number %}
+                                <span class="admin-primary-btn" style="pointer-events: none;">{{ page_number }}</span>
+                            {% elif page_number >= attribute_values_page.number|add:'-2' and page_number <= attribute_values_page.number|add:'2' %}
+                                <a href="?page={{ page_number }}{{ attribute_values_query_string }}" class="admin-ghost-btn">{{ page_number }}</a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if attribute_values_page.has_next %}
+                            <a href="?page={{ attribute_values_page.next_page_number }}{{ attribute_values_query_string }}" class="admin-ghost-btn">Sau</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Product popup modal -->
+<div id="attr-products-modal" class="attr-modal-overlay" hidden>
+    <div class="attr-modal" role="dialog" aria-modal="true" aria-labelledby="attr-modal-title">
+        <div class="attr-modal-head">
+            <div>
+                <span class="admin-section-eyebrow">Sản phẩm được gán thuộc tính</span>
+                <h4 id="attr-modal-title">—</h4>
+            </div>
+            <button type="button" class="attr-modal-close" data-attr-modal-close aria-label="Đóng">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="attr-modal-body" id="attr-modal-body">
+            <div class="attr-modal-loading">Đang tải...</div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-attr-value-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-weight: 700;
+    color: #4f46e5;
+    cursor: pointer;
+    text-align: left;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+}
+.admin-attr-value-link:hover { color: #4338ca; }
+.attr-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 1000;
+}
+.attr-modal {
+    background: #fff;
+    border-radius: 18px;
+    width: min(760px, 100%);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+    overflow: hidden;
+}
+.attr-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.attr-modal-head h4 { margin: 4px 0 0; font-size: 18px; }
+.attr-modal-close {
+    background: #f3f4f6;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: #374151;
+    flex-shrink: 0;
+}
+.attr-modal-close:hover { background: #e5e7eb; }
+.attr-modal-body { padding: 16px 24px 24px; overflow-y: auto; }
+.attr-modal-loading, .attr-modal-empty { padding: 32px 0; text-align: center; color: #9ca3af; }
+.attr-product-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.attr-product-row:last-child { border-bottom: none; }
+.attr-product-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #f3f4f6;
+    flex-shrink: 0;
+}
+.attr-product-thumb.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cbd5e1;
+    font-size: 20px;
+}
+.attr-product-info { flex: 1; min-width: 0; }
+.attr-product-info strong { display: block; }
+.attr-product-info span { font-size: 12px; color: #9ca3af; }
+.attr-product-remove {
+    flex-shrink: 0;
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.attr-product-remove:hover { background: #fee2e2; }
+.attr-product-remove:disabled { opacity: 0.6; cursor: default; }
+</style>
+
+<script>
+(function () {
+    const modal = document.getElementById('attr-products-modal');
+    const modalTitle = document.getElementById('attr-modal-title');
+    const modalBody = document.getElementById('attr-modal-body');
+    const csrfToken = '{{ csrf_token }}';
+    let currentBtn = null;
+    let currentProductsUrl = '';
+
+    function openModal() { modal.hidden = false; }
+    function closeModal() {
+        modal.hidden = true;
+        modalBody.innerHTML = '<div class="attr-modal-loading">Đang tải...</div>';
+        currentBtn = null;
+        currentProductsUrl = '';
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text == null ? '' : text;
+        return div.innerHTML;
+    }
+
+    function updateUsageCount(count) {
+        if (!currentBtn) return;
+        const meta = currentBtn.parentElement.querySelector('span');
+        if (meta) {
+            meta.textContent = meta.textContent.replace(/·\s*\d+\s*sản phẩm/, '· ' + count + ' sản phẩm');
+        }
+    }
+
+    function renderProducts(data) {
+        if (!data.products || !data.products.length) {
+            modalBody.innerHTML = '<div class="attr-modal-empty">Chưa có sản phẩm nào được gán giá trị này.</div>';
+            return;
+        }
+        const rows = data.products.map(function (p) {
+            const thumb = p.image_url
+                ? '<img class="attr-product-thumb" src="' + escapeHtml(p.image_url) + '" alt="">'
+                : '<div class="attr-product-thumb placeholder"><i class="bi bi-image"></i></div>';
+            const meta = [p.product_code, p.brand, p.category].filter(Boolean).map(escapeHtml).join(' · ');
+            const status = p.is_active ? '' : ' · <span style="color:#d97706;">Ngừng bán</span>';
+            const custom = p.custom_value ? ' · Giá trị riêng: ' + escapeHtml(p.custom_value) : '';
+            return '<div class="attr-product-row" data-product-id="' + p.id + '">' + thumb +
+                '<div class="attr-product-info"><strong>' + escapeHtml(p.name) + '</strong>' +
+                '<span>' + meta + status + custom + '</span></div>' +
+                '<button type="button" class="attr-product-remove" data-remove-product="' + p.id + '">' +
+                '<i class="bi bi-x-circle"></i> Gỡ thuộc tính</button></div>';
+        }).join('');
+        modalBody.innerHTML = rows;
+    }
+
+    document.querySelectorAll('.admin-attr-value-link').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            currentBtn = btn;
+            currentProductsUrl = btn.getAttribute('data-products-url');
+            modalTitle.textContent = btn.getAttribute('data-group-name') + ': ' + btn.getAttribute('data-value-name');
+            modalBody.innerHTML = '<div class="attr-modal-loading">Đang tải...</div>';
+            openModal();
+            fetch(currentProductsUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (res) { return res.json(); })
+                .then(renderProducts)
+                .catch(function () {
+                    modalBody.innerHTML = '<div class="attr-modal-empty">Không tải được danh sách sản phẩm.</div>';
+                });
+        });
+    });
+
+    modalBody.addEventListener('click', function (e) {
+        const removeBtn = e.target.closest('[data-remove-product]');
+        if (!removeBtn) return;
+        const productId = removeBtn.getAttribute('data-remove-product');
+        if (!confirm('Gỡ thuộc tính này khỏi sản phẩm?')) return;
+
+        removeBtn.disabled = true;
+        removeBtn.textContent = 'Đang gỡ...';
+        const removeUrl = currentProductsUrl + productId + '/remove/';
+        fetch(removeUrl, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+            .then(function (result) {
+                if (!result.ok || !result.data.success) {
+                    alert(result.data.message || 'Không gỡ được thuộc tính.');
+                    removeBtn.disabled = false;
+                    removeBtn.innerHTML = '<i class="bi bi-x-circle"></i> Gỡ thuộc tính';
+                    return;
+                }
+                const row = removeBtn.closest('.attr-product-row');
+                if (row) row.remove();
+                updateUsageCount(result.data.remaining);
+                if (result.data.remaining === 0) {
+                    modalBody.innerHTML = '<div class="attr-modal-empty">Chưa có sản phẩm nào được gán giá trị này.</div>';
+                }
+            })
+            .catch(function () {
+                alert('Đã xảy ra lỗi khi gỡ thuộc tính.');
+                removeBtn.disabled = false;
+                removeBtn.innerHTML = '<i class="bi bi-x-circle"></i> Gỡ thuộc tính';
+            });
+    });
+
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal || e.target.closest('[data-attr-modal-close]')) {
+            closeModal();
+        }
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !modal.hidden) closeModal();
+    });
+})();
+</script>
+{% endblock %}

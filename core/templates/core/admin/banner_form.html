@@ -1,0 +1,90 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_topbar_actions %}
+<a href="{% url 'core:admin_content' %}" class="admin-ghost-btn">
+    <i class="bi bi-arrow-left"></i>
+    Quay lại danh sách
+</a>
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-panel admin-panel-large">
+
+    <div class="admin-product-layout">
+        <div class="admin-product-form-card" id="banner-form">
+            <div class="admin-product-form-head">
+                <div>
+                    <span class="admin-section-eyebrow">Biểu mẫu banner</span>
+                    <h4>{{ editing_banner|yesno:"Cập nhật banner,Tạo banner mới" }}</h4>
+                </div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data" action="{% if editing_banner %}{% url 'core:admin_banner_update' banner_id=editing_banner.id %}{% else %}{% url 'core:admin_banner_create' %}{% endif %}" class="admin-product-form">
+                {% csrf_token %}
+
+                {% if banner_form.non_field_errors %}
+                    <div class="admin-form-errors">{{ banner_form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="admin-form-grid admin-brand-form-grid">
+                    <div class="admin-form-field full-width">
+                        <label for="id_image">{{ banner_form.image.label }}</label>
+                        {{ banner_form.image }}
+                        {% if editing_banner and editing_banner.image %}
+                            <div style="margin-top:8px;">
+                                <img src="{{ editing_banner.image.url }}" alt="Preview" style="max-height:120px;border-radius:8px;object-fit:cover;">
+                            </div>
+                        {% endif %}
+                        <div class="admin-field-error">{{ banner_form.image.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="id_cta_url">{{ banner_form.cta_url.label }}</label>
+                        {{ banner_form.cta_url }}
+                        <div class="admin-field-error">{{ banner_form.cta_url.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="id_position">{{ banner_form.position.label }}</label>
+                        {{ banner_form.position }}
+                        <div class="admin-field-error">{{ banner_form.position.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="id_display_order">{{ banner_form.display_order.label }}</label>
+                        {{ banner_form.display_order }}
+                        <div class="admin-field-error">{{ banner_form.display_order.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="id_start_at">{{ banner_form.start_at.label }}</label>
+                        {{ banner_form.start_at }}
+                        <div class="admin-field-error">{{ banner_form.start_at.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="id_end_at">{{ banner_form.end_at.label }}</label>
+                        {{ banner_form.end_at }}
+                        <div class="admin-field-error">{{ banner_form.end_at.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field full-width">
+                        <label class="form-check-label" for="id_is_active">
+                            {{ banner_form.is_active }} {{ banner_form.is_active.label }}
+                        </label>
+                        <div class="admin-field-error">{{ banner_form.is_active.errors }}</div>
+                    </div>
+                </div>
+
+                <div class="admin-form-actions">
+                    <button type="submit" class="admin-primary-btn">
+                        <i class="bi bi-check2-circle"></i>
+                        {{ editing_banner|yesno:"Lưu cập nhật,Tạo banner" }}
+                    </button>
+                    <a href="{% url 'core:admin_content' %}" class="admin-ghost-btn">Hủy</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

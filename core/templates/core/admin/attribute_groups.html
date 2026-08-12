@@ -1,0 +1,200 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_topbar_actions %}
+{% if editing_group %}
+    <a href="{% url 'core:admin_attribute_groups' %}" class="admin-ghost-btn">
+        <i class="bi bi-arrow-counterclockwise"></i>
+        Tạo mới nhóm thuộc tính
+    </a>
+{% endif %}
+<a href="#attribute-group-form" class="admin-primary-btn">
+    <i class="bi bi-list-nested"></i>
+    {{ editing_group|yesno:"Cập nhật nhóm thuộc tính,Thêm nhóm thuộc tính" }}
+</a>
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-panel admin-panel-large">
+    <div class="admin-products-layout admin-brands-layout">
+        <div class="admin-product-form-card" id="attribute-group-form">
+            <div class="admin-product-form-head">
+                <div>
+                    <span class="admin-section-eyebrow">Biểu mẫu nhóm thuộc tính</span>
+                    <h4>{{ editing_group|yesno:"Cập nhật nhóm thuộc tính,Tạo nhóm thuộc tính mới" }}</h4>
+                </div>
+                {% if editing_group %}
+                    <a href="{% url 'core:admin_attribute_groups' %}" class="admin-form-cancel">Hủy chỉnh sửa</a>
+                {% endif %}
+            </div>
+
+            <form method="post" action="{% if editing_group %}{% url 'core:admin_attribute_group_update' editing_group.id %}{% else %}{% url 'core:admin_attribute_group_create' %}{% endif %}" class="admin-product-form">
+                {% csrf_token %}
+
+                {% if attribute_group_form.non_field_errors %}
+                    <div class="admin-form-errors">{{ attribute_group_form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="admin-form-grid">
+                    <div class="admin-form-field full-width">
+                        <label for="{{ attribute_group_form.name.id_for_label }}">Tên nhóm thuộc tính</label>
+                        {{ attribute_group_form.name }}
+                        <div class="admin-field-error">{{ attribute_group_form.name.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="{{ attribute_group_form.slug.id_for_label }}">Slug</label>
+                        {{ attribute_group_form.slug }}
+                        <div class="admin-field-error">{{ attribute_group_form.slug.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="{{ attribute_group_form.display_order.id_for_label }}">Thứ tự hiển thị</label>
+                        {{ attribute_group_form.display_order }}
+                        <div class="admin-field-error">{{ attribute_group_form.display_order.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="{{ attribute_group_form.filter_type.id_for_label }}">Kiểu bộ lọc</label>
+                        {{ attribute_group_form.filter_type }}
+                        <div class="admin-field-error">{{ attribute_group_form.filter_type.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="{{ attribute_group_form.data_type.id_for_label }}">Kiểu dữ liệu</label>
+                        {{ attribute_group_form.data_type }}
+                        <div class="admin-field-error">{{ attribute_group_form.data_type.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field full-width">
+                        <label for="{{ attribute_group_form.categories.id_for_label }}">Danh mục áp dụng</label>
+                        {{ attribute_group_form.categories }}
+                        <div class="admin-field-hint">Có thể chọn nhiều danh mục. Để trống nếu muốn dùng rộng hơn.</div>
+                        <div class="admin-field-error">{{ attribute_group_form.categories.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="{{ attribute_group_form.is_filterable.id_for_label }}">Hiển thị ở bộ lọc</label>
+                        {{ attribute_group_form.is_filterable }}
+                        <div class="admin-field-error">{{ attribute_group_form.is_filterable.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field">
+                        <label for="{{ attribute_group_form.is_active.id_for_label }}">Đang hoạt động</label>
+                        {{ attribute_group_form.is_active }}
+                        <div class="admin-field-error">{{ attribute_group_form.is_active.errors }}</div>
+                    </div>
+                </div>
+
+                <div class="admin-form-actions">
+                    <button type="submit" class="admin-primary-btn">
+                        <i class="bi bi-check2-circle"></i>
+                        {{ editing_group|yesno:"Lưu cập nhật,Tạo nhóm thuộc tính" }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="admin-product-list-card">
+            <div class="admin-product-list-head">
+                <div>
+                    <span class="admin-section-eyebrow">Danh sách nhóm thuộc tính</span>
+                    <h4>Nhóm thuộc tính hiện có</h4>
+                </div>
+                <span class="admin-list-count">{{ attribute_groups_total }} nhóm</span>
+            </div>
+
+            <form method="get" class="admin-search-bar">
+                <div class="admin-form-field">
+                    <label for="attr-group-search-input">Tìm kiếm nhóm thuộc tính</label>
+                    <input id="attr-group-search-input" type="text" name="q" value="{{ attribute_groups_search_query }}" class="admin-form-control" placeholder="Nhập tên nhóm hoặc slug">
+                </div>
+                <button type="submit" class="admin-primary-btn">Tìm kiếm</button>
+                <a href="{% url 'core:admin_attribute_groups' %}" class="admin-ghost-btn">Reset</a>
+            </form>
+
+            <div class="admin-product-table-wrap">
+                <table class="admin-product-table admin-brand-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nhóm thuộc tính</th>
+                            <th>Danh mục</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in attribute_groups %}
+                            <tr>
+                                <td>{{ group.id }}</td>
+                                <td>
+                                    <div class="admin-product-name-cell">
+                                        <strong>{{ group.name }}</strong>
+                                        <span>{{ group.slug }} · {{ group.values_total }} giá trị</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% with group.categories.all as group_categories %}
+                                        {% if group_categories %}
+                                            {{ group_categories|join:", " }}
+                                        {% else %}
+                                            Tất cả danh mục phù hợp
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td>
+                                    <span class="status-badge {% if group.is_active %}success{% else %}warning{% endif %}">
+                                        {{ group.is_active|yesno:"Hoạt động,Vô hiệu hóa" }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="admin-table-actions">
+                                        <a href="{% url 'core:admin_attribute_groups' %}?edit_group={{ group.id }}{{ attribute_groups_edit_query_string }}#attribute-group-form" class="admin-table-btn edit">Sửa</a>
+                                        <form method="post" action="{% url 'core:admin_attribute_group_delete' group.id %}" onsubmit="return confirm('Nếu nhóm đang được dùng, hệ thống sẽ tự vô hiệu hóa thay vì xóa. Tiếp tục?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="admin-table-btn delete">{{ group.product_usage_count|yesno:"Vô hiệu hóa,Xóa" }}</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5">
+                                    <div class="admin-empty-state">
+                                        <i class="bi bi-list-nested"></i>
+                                        <strong>Chưa có nhóm thuộc tính nào</strong>
+                                        <span>Hãy tạo nhóm thuộc tính đầu tiên để mở rộng hệ thống lọc sản phẩm.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if attribute_groups_page.paginator.num_pages > 1 %}
+                <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-top: 16px; flex-wrap: wrap;">
+                    <span class="admin-field-hint">Trang {{ attribute_groups_page.number }} / {{ attribute_groups_page.paginator.num_pages }}</span>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        {% if attribute_groups_page.has_previous %}
+                            <a href="?page={{ attribute_groups_page.previous_page_number }}{{ attribute_groups_query_string }}" class="admin-ghost-btn">Trước</a>
+                        {% endif %}
+
+                        {% for page_number in attribute_groups_page.paginator.page_range %}
+                            {% if page_number == attribute_groups_page.number %}
+                                <span class="admin-primary-btn" style="pointer-events: none;">{{ page_number }}</span>
+                            {% elif page_number >= attribute_groups_page.number|add:'-2' and page_number <= attribute_groups_page.number|add:'2' %}
+                                <a href="?page={{ page_number }}{{ attribute_groups_query_string }}" class="admin-ghost-btn">{{ page_number }}</a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if attribute_groups_page.has_next %}
+                            <a href="?page={{ attribute_groups_page.next_page_number }}{{ attribute_groups_query_string }}" class="admin-ghost-btn">Sau</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

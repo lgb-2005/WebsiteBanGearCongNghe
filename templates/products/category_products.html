@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ category.name }} - TechGear{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'products/css/listing.css' %}">
+{% endblock %}
+
+{% block content %}
+    {% include 'products/_listing_content.html' with breadcrumb_title=category.name page_title=category.name hero_eyebrow='Danh mục sản phẩm' page_description='Khám phá các sản phẩm nổi bật trong danh mục này.' hero_stat_label='Sản phẩm hiện có' toolbar_description='Hiển thị toàn bộ sản phẩm trong danh mục' empty_title='Chưa có sản phẩm phù hợp' empty_message='Hãy thử bỏ bớt bộ lọc hoặc quay lại sau khi cửa hàng cập nhật thêm sản phẩm cho danh mục này.' %}
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/category_filter.js' %}"></script>
+{% endblock %}

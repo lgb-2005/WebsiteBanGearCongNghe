@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}TechGear Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/admin-dashboard.css' %}">
+{% block admin_extra_css %}{% endblock %}
+{% endblock %}
+
+{% block site_header %}
+<header class="admin-header-bar">
+    <div class="container-fluid admin-header-shell">
+        <a href="{% url 'core:admin_dashboard' %}" class="admin-header-brand text-decoration-none">
+            <span class="admin-header-brand-mark">
+                <i class="bi bi-shield-lock"></i>
+            </span>
+            <span class="admin-header-brand-copy">
+                <strong>TECHGEAR ADMIN</strong>
+                <small>Hệ thống quản trị vận hành</small>
+            </span>
+        </a>
+
+        <div class="admin-header-actions">
+            {% if request.admin_user %}
+            <span class="admin-header-user">
+                <i class="bi bi-person-circle"></i>
+                <span>{{ request.admin_user.name|default:request.admin_user.email }}</span>
+            </span>
+            <a href="{% url 'core:admin_logout' %}" class="admin-header-link admin-header-link-danger text-decoration-none">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Đăng xuất</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard-page">
+    <div class="admin-dashboard-shell container-fluid">
+        <aside class="admin-sidebar">
+            <div class="admin-brand-block">
+                <span class="admin-badge">TechGear Control</span>
+                <h1 class="admin-brand-title">Admin Dashboard</h1>
+            </div>
+
+            <nav class="admin-nav-menu">
+                <a href="{% url 'core:admin_dashboard' %}" class="admin-nav-item{% if active_panel == 'overview' %} active{% endif %}">
+                    <i class="bi bi-grid-1x2"></i>
+                    <span>Tổng quan</span>
+                </a>
+                <a href="{% url 'core:admin_analytics' %}" class="admin-nav-item{% if active_panel == 'analytics' %} active{% endif %}">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <span>Phân tích hành vi</span>
+                </a>
+                <a href="{% url 'core:admin_revenue_report' %}" class="admin-nav-item{% if active_panel == 'revenue' %} active{% endif %}">
+                    <i class="bi bi-cash-stack"></i>
+                    <span>Thống kê doanh thu</span>
+                </a>
+                <a href="{% url 'core:admin_products' %}" class="admin-nav-item{% if active_panel == 'products' %} active{% endif %}">
+                    <i class="bi bi-box-seam"></i>
+                    <span>Sản phẩm</span>
+                </a>
+                <a href="{% url 'core:admin_brands' %}" class="admin-nav-item{% if active_panel == 'brands' %} active{% endif %}">
+                    <i class="bi bi-tags"></i>
+                    <span>Thương hiệu</span>
+                </a>
+                <a href="{% url 'core:admin_categories' %}" class="admin-nav-item{% if active_panel == 'categories' %} active{% endif %}">
+                    <i class="bi bi-diagram-3"></i>
+                    <span>Danh mục</span>
+                </a>
+                <a href="{% url 'core:admin_attribute_groups' %}" class="admin-nav-item{% if active_panel == 'attribute_groups' %} active{% endif %}">
+                    <i class="bi bi-list-nested"></i>
+                    <span>Nhóm thuộc tính</span>
+                </a>
+                <a href="{% url 'core:admin_attribute_values' %}" class="admin-nav-item{% if active_panel == 'attribute_values' %} active{% endif %}">
+                    <i class="bi bi-palette"></i>
+                    <span>Giá trị thuộc tính</span>
+                </a>
+                <a href="{% url 'core:admin_orders' %}" class="admin-nav-item{% if active_panel == 'orders' %} active{% endif %}">
+                    <i class="bi bi-receipt"></i>
+                    <span>Đơn hàng</span>
+                </a>
+                <a href="{% url 'core:admin_reviews' %}" class="admin-nav-item{% if active_panel == 'reviews' %} active{% endif %}">
+                    <i class="bi bi-star-half"></i>
+                    <span>Đánh giá</span>
+                </a>
+                <a href="{% url 'core:admin_users' %}" class="admin-nav-item{% if active_panel == 'users' %} active{% endif %}">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Người dùng</span>
+                </a>
+                <a href="{% url 'core:admin_customers' %}" class="admin-nav-item{% if active_panel == 'customers' %} active{% endif %}">
+                    <i class="bi bi-people"></i>
+                    <span>Khách hàng</span>
+                </a>
+                <a href="{% url 'core:admin_content' %}" class="admin-nav-item{% if active_panel == 'content' %} active{% endif %}">
+                    <i class="bi bi-window-stack"></i>
+                    <span>Banner</span>
+                </a>
+            </nav>
+        </aside>
+
+        <section class="admin-main-content">
+            <div class="admin-topbar">
+                <div>
+                    <span class="admin-page-eyebrow">Trang quản trị viên</span>
+                    <h2 class="admin-page-title">{{ admin_page_title }}</h2>
+                </div>
+                <div class="admin-topbar-actions">
+                    {% block admin_topbar_actions %}{% endblock %}
+                </div>
+            </div>
+
+            {% block admin_content %}{% endblock %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const productNameInput = document.getElementById("id_name");
+    const productSlugInput = document.getElementById("id_slug");
+    const priceInputs = [document.getElementById("id_price"), document.getElementById("id_discount_price")].filter(Boolean);
+    const productImageInput = document.getElementById("id_images");
+    const newProductImagePreview = document.getElementById("newProductImagePreview");
+    const existingProductImageList = document.getElementById("existingProductImageList");
+    const deletedImagesInputsContainer = document.getElementById("id_deleted_images");
+
+    function slugifyValue(value) {
+        return value
+            .toString()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-");
+    }
+
+    function formatCurrencyInput(input) {
+        const digits = (input.value || "").replace(/[^\d]/g, "");
+        if (!digits) {
+            input.value = "";
+            return;
+        }
+
+        input.value = Number(digits).toLocaleString("vi-VN");
+    }
+
+    function normalizeCurrencyInput(input) {
+        input.value = (input.value || "").replace(/[^\d]/g, "");
+    }
+
+    function formatCurrencyInputPreserveCaret(input) {
+        const selectionStart = input.selectionStart ?? input.value.length;
+        const digitsBeforeCaret = (input.value.slice(0, selectionStart).match(/\d/g) || []).length;
+        const digits = (input.value || "").replace(/[^\d]/g, "");
+
+        if (!digits) {
+            input.value = "";
+            return;
+        }
+
+        const formattedValue = Number(digits).toLocaleString("vi-VN");
+        input.value = formattedValue;
+
+        let digitCount = 0;
+        let caretPosition = formattedValue.length;
+        for (let index = 0; index < formattedValue.length; index += 1) {
+            if (/\d/.test(formattedValue[index])) {
+                digitCount += 1;
+            }
+            if (digitCount >= digitsBeforeCaret) {
+                caretPosition = index + 1;
+                break;
+            }
+        }
+
+        input.setSelectionRange(caretPosition, caretPosition);
+    }
+
+    if (productNameInput && productSlugInput) {
+        let slugManuallyEdited = Boolean(productSlugInput.value);
+
+        productSlugInput.addEventListener("input", function () {
+            slugManuallyEdited = Boolean(productSlugInput.value.trim());
+        });
+
+        productNameInput.addEventListener("input", function () {
+            if (!slugManuallyEdited) {
+                productSlugInput.value = slugifyValue(productNameInput.value);
+            }
+        });
+    }
+
+    priceInputs.forEach((input) => {
+        formatCurrencyInput(input);
+        input.addEventListener("input", function () {
+            formatCurrencyInputPreserveCaret(input);
+        });
+        input.addEventListener("blur", function () {
+            formatCurrencyInput(input);
+        });
+    });
+
+    const productForms = Array.from(document.querySelectorAll('form[action*="/products/"]'));
+    productForms.forEach((form) => {
+        form.addEventListener("submit", function () {
+            priceInputs.forEach((input) => normalizeCurrencyInput(input));
+        });
+    });
+
+    if (productImageInput && newProductImagePreview) {
+        productImageInput.addEventListener("change", function () {
+            newProductImagePreview.innerHTML = "";
+
+            Array.from(productImageInput.files || []).forEach((file) => {
+                if (!file.type.startsWith("image/")) {
+                    return;
+                }
+
+                const previewItem = document.createElement("div");
+                previewItem.className = "admin-image-preview-item";
+
+                const previewImage = document.createElement("img");
+                previewImage.alt = file.name;
+                previewImage.src = URL.createObjectURL(file);
+                previewImage.addEventListener("load", function () {
+                    URL.revokeObjectURL(previewImage.src);
+                });
+
+                previewItem.appendChild(previewImage);
+                newProductImagePreview.appendChild(previewItem);
+            });
+        });
+    }
+
+    if (existingProductImageList) {
+        existingProductImageList.addEventListener("click", function (event) {
+            const removeButton = event.target.closest("[data-remove-existing-image]");
+            if (!removeButton) {
+                return;
+            }
+
+            const imageId = removeButton.dataset.imageId;
+            const imageItem = existingProductImageList.querySelector(`[data-existing-image-item][data-image-id="${imageId}"]`);
+            if (!imageId || !imageItem) {
+                return;
+            }
+
+            const existingHiddenInput = document.querySelector(`input[name="deleted_images"][value="${imageId}"]`);
+            if (existingHiddenInput) {
+                existingHiddenInput.remove();
+                imageItem.style.opacity = "1";
+                removeButton.textContent = "Xóa ảnh";
+                removeButton.classList.remove("edit");
+                removeButton.classList.add("delete");
+                return;
+            }
+
+            const hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.name = "deleted_images";
+            hiddenInput.value = imageId;
+
+            if (deletedImagesInputsContainer && deletedImagesInputsContainer.parentElement) {
+                deletedImagesInputsContainer.parentElement.appendChild(hiddenInput);
+            } else if (productForms[0]) {
+                productForms[0].appendChild(hiddenInput);
+            }
+
+            imageItem.style.opacity = "0.45";
+            removeButton.textContent = "Hoàn tác";
+            removeButton.classList.remove("delete");
+            removeButton.classList.add("edit");
+        });
+    }
+});
+</script>
+{% block admin_extra_js %}{% endblock %}
+{% endblock %}

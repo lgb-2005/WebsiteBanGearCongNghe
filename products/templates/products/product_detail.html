@@ -1,0 +1,676 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load product_extras %}
+
+{% block title %}{{ product.name }} - TechGear{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/review.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="product-detail-page">
+    <div class="container product-detail-shell">
+        <nav class="product-detail-breadcrumb" aria-label="breadcrumb">
+            <a href="{% url 'core:home' %}">Trang chủ</a>
+            <span>/</span>
+            <a href="{% url 'products:category_products' product.category.slug %}">
+                {{ product.category.name }}
+            </a>
+            <span>/</span>
+            <strong>{{ product.name }}</strong>
+        </nav>
+
+        <div class="product-detail-hero">
+            <div class="product-detail-gallery-card">
+                <div class="product-detail-main-media">
+                    <button type="button" class="product-detail-gallery-nav is-prev" id="productGalleryPrev" aria-label="Ảnh trước">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    {% if gallery_images %}
+                    <img src="{{ gallery_images.0 }}" alt="{{ product.name }}" class="product-detail-main-image" id="productMainImage">
+                    {% else %}
+                    <img src="{% static 'images/banner1.jpg' %}" alt="{{ product.name }}" class="product-detail-main-image" id="productMainImage">
+                    {% endif %}
+                    <button type="button" class="product-detail-gallery-nav is-next" id="productGalleryNext" aria-label="Ảnh tiếp theo">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+
+                <div class="product-detail-thumbnail-strip">
+                    <button type="button" class="product-detail-thumb-nav is-prev" id="productThumbPrev" aria-label="Cuộn thumbnail sang trái">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <div class="product-detail-thumbnail-viewport" id="productThumbViewport">
+                        <div class="product-detail-thumbnail-row">
+                            {% for image in gallery_images %}
+                            <button type="button" class="product-detail-thumb-btn{% if forloop.first %} is-active{% endif %}" data-image-src="{{ image }}" data-image-index="{{ forloop.counter0 }}">
+                                <img src="{{ image }}" alt="{{ product.name }} {{ forloop.counter }}" class="product-detail-thumb-image">
+                            </button>
+                            {% empty %}
+                            <button type="button" class="product-detail-thumb-btn is-active" data-image-src="{% static 'images/banner1.jpg' %}" data-image-index="0">
+                                <img src="{% static 'images/banner1.jpg' %}" alt="{{ product.name }}" class="product-detail-thumb-image">
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <button type="button" class="product-detail-thumb-nav is-next" id="productThumbNext" aria-label="Cuộn thumbnail sang phải">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="product-detail-summary-card" style="position:relative;">
+                {% if user.is_authenticated %}
+                <button type="button"
+                        id="favoriteBtn"
+                        data-slug="{{ product.slug }}"
+                        data-url="{% url 'products:toggle_favorite' product.slug %}"
+                        data-favorited="{% if is_favorited %}1{% else %}0{% endif %}"
+                        aria-label="{% if is_favorited %}Bỏ yêu thích{% else %}Yêu thích{% endif %}"
+                        style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;padding:4px;line-height:1;z-index:2;">
+                    <i class="bi bi-heart" style="font-size:22px;" id="favoriteIcon"></i>
+                </button>
+                {% endif %}
+                <div class="product-detail-badge-row">
+                    {% if product.brand %}
+                    <span class="product-detail-chip">{{ product.brand.name }}</span>
+                    {% endif %}
+                    <span class="product-detail-chip is-soft">{{ product.category.name }}</span>
+                    {% if discount_percent %}
+                    <span class="product-detail-chip is-sale">Giảm {{ discount_percent }}%</span>
+                    {% endif %}
+                </div>
+
+                <h1 class="product-detail-title">{{ product.name }}</h1>
+
+                <div class="product-detail-meta-grid">
+                    <div class="product-detail-meta-item">
+                        <span class="product-detail-meta-label">Đánh giá</span>
+                        <strong>{{ rating_display }}/5</strong>
+                    </div>
+                    <div class="product-detail-meta-item">
+                        <span class="product-detail-meta-label">Lượt xem</span>
+                        <strong>{{ product.view_count }}</strong>
+                    </div>
+                    <div class="product-detail-meta-item">
+                        <span class="product-detail-meta-label">Nhận xét</span>
+                        <strong>{{ review_count }}</strong>
+                    </div>
+                    <div class="product-detail-meta-item">
+                        <span class="product-detail-meta-label">Tình trạng</span>
+                        {% if product.stock > 0 %}
+                            <strong style="color: green;">Còn hàng</strong>
+                        {% else %}
+                            <strong style="color: red;">Hết hàng</strong>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="product-detail-price-panel">
+                    <div class="product-detail-price-main">{{ current_price }}</div>
+                    {% if old_price %}
+                    <div class="product-detail-price-sub">
+                        <span class="product-detail-old-price">{{ old_price }}</span>
+                        <span class="product-detail-save-tag">Tiết kiệm {{ discount_percent }}%</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="product-detail-feature-list">
+                    <div class="product-detail-feature-item">
+                        <i class="bi bi-shield-check"></i>
+                        <span>Bảo hành chính hãng, hỗ trợ kỹ thuật tận tâm</span>
+                    </div>
+                    <div class="product-detail-feature-item">
+                        <i class="bi bi-truck"></i>
+                        <span>Giao nhanh toàn quốc, kiểm tra hàng trước khi nhận</span>
+                    </div>
+                    <div class="product-detail-feature-item">
+                        <i class="bi bi-arrow-repeat"></i>
+                        <span>Đổi trả dễ dàng nếu sản phẩm gặp lỗi kỹ thuật</span>
+                    </div>
+                </div>
+
+                <div class="product-detail-actions">
+                    {% if product.stock > 0 %}
+                        <form method="post" action="{% url 'cart:add_to_cart' %}" class="product-detail-cart-form" id="productAddToCartForm">
+                            {% csrf_token %}
+                            <input type="hidden" name="product_id" value="{{ product.id }}">
+                            <input type="hidden" name="quantity" value="1">
+                            <button type="submit" class="product-detail-primary-btn">
+                                <i class="bi bi-cart-plus"></i>
+                                <span>Thêm vào giỏ hàng</span>
+                            </button>
+                        </form>
+                        <form method="post" action="{% url 'cart:add_to_cart' %}" class="product-detail-cart-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="product_id" value="{{ product.id }}">
+                            <input type="hidden" name="quantity" value="1">
+                            <input type="hidden" name="redirect_to_cart" value="1">
+                            <button type="submit" class="product-detail-secondary-btn">
+                                <i class="bi bi-lightning-charge"></i>
+                                <span>Mua ngay</span>
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="product-detail-out-of-stock">
+                            <i class="bi bi-x-circle"></i>
+                            <span>Sản phẩm đã hết hàng</span>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="product-detail-cart-message" id="productCartMessage" hidden></div>
+            </div>
+        </div>
+
+        <div class="product-detail-content-grid">
+            <section class="product-detail-description-card">
+                <div class="product-detail-section-head">
+                    <h2>Mô tả sản phẩm</h2>
+                </div>
+
+                {% if product.description|strip_html %}
+                <div class="product-description">
+                    {{ product.description|safe }}
+                </div>
+                {% else %}
+                <div class="product-detail-empty-state">
+                    Mô tả sản phẩm đang được cập nhật.
+                </div>
+                {% endif %}
+            </section>
+
+            <aside class="product-detail-side-panel">
+                <div class="product-detail-info-card">
+                    <h3>Thông tin nhanh</h3>
+                    <dl class="product-detail-info-list">
+                        <div>
+                            <dt>Danh mục</dt>
+                            <dd>{{ product.category.name }}</dd>
+                        </div>
+                        <div>
+                            <dt>Thương hiệu</dt>
+                            <dd>{{ product.brand.name|default:'Đang cập nhật' }}</dd>
+                        </div>
+                        <div>
+                            <dt>Tồn kho</dt>
+                            <dd>{{ product.stock }}</dd>
+                        </div>
+                        <div>
+                            <dt>Mã sản phẩm</dt>
+                            <dd style="font-family: monospace; letter-spacing: .05em; font-weight: 700;">{{ product.product_code }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                {% if product_information_items %}
+                <div class="product-detail-specs-block">
+                    <div class="product-detail-section-head product-detail-section-head-sm">
+                        <h2>Thông tin sản phẩm</h2>
+                        <p>Thông số kỹ thuật và đặc điểm nổi bật của sản phẩm.</p>
+                    </div>
+                    <div class="product-detail-specs-table-wrap">
+                        <table class="product-detail-specs-table">
+                            <tbody>
+                                {% for item in product_information_items %}
+                                <tr>
+                                    <th>{{ item.label }}</th>
+                                    <td>{{ item.value }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </aside>
+        </div>
+
+        {% if related_products %}
+        <section class="product-detail-related-section">
+            <div class="product-detail-section-head">
+                <h2>Sản phẩm liên quan</h2>
+                <p>Cùng danh mục, phù hợp để bạn tham khảo thêm.</p>
+            </div>
+
+            <div class="product-detail-related-grid">
+                {% for item in related_products %}
+                <a href="{% url 'products:product_detail' item.slug %}" class="product-detail-related-card text-decoration-none">
+                    {% if item.discount_percent %}
+                    <span class="product-detail-related-discount">-{{ item.discount_percent }}%</span>
+                    {% endif %}
+                    <div class="product-detail-related-media">
+                        {% if item.image_url %}
+                        <img src="{{ item.image_url }}" alt="{{ item.name }}" class="product-detail-related-image">
+                        {% else %}
+                        <img src="{% static 'images/banner2.jpg' %}" alt="{{ item.name }}" class="product-detail-related-image">
+                        {% endif %}
+                    </div>
+                    <div class="product-detail-related-body">
+                        {% if item.brand_name %}
+                        <span class="product-detail-related-brand">{{ item.brand_name }}</span>
+                        {% endif %}
+                        <h3>{{ item.name }}</h3>
+                        <div class="product-detail-related-price-row">
+                            <span class="product-detail-related-price">{{ item.price }}</span>
+                            {% if item.old_price %}
+                            <span class="product-detail-related-old-price">{{ item.old_price }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+    </div>
+</section>
+<section class="review-section">
+    <div class="review-shell">
+
+        <div class="review-section-head">
+            <div>
+                <h2 class="review-title">Đánh giá sản phẩm</h2>
+                <p class="review-subtitle">Chia sẻ trải nghiệm thực tế của bạn về sản phẩm này</p>
+            </div>
+            {% if reviews %}
+            <div class="review-rating-summary">
+                <span class="review-rating-big">{{ rating_display|default:"—" }}</span>
+                <div>
+                    <div class="review-rating-stars-sm">
+                        {% for i in "12345" %}
+                            <i class="bi bi-star-fill"></i>
+                        {% endfor %}
+                    </div>
+                    <div class="review-rating-label">{{ reviews|length }}{% if has_more_reviews %}+{% endif %} đánh giá</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if user.is_authenticated %}
+            {% if has_purchased %}
+            <div class="review-form-card">
+                <p class="review-form-card-title">
+                    {% if existing_review %}Chỉnh sửa đánh giá của bạn{% else %}Viết đánh giá của bạn{% endif %}
+                </p>
+                <p class="review-form-card-sub">Chọn số sao và mô tả cảm nhận của bạn về sản phẩm</p>
+
+                <form method="POST" action="{% url 'products:add_review' product.slug %}" class="review-form">
+                    {% csrf_token %}
+
+                    <input type="hidden" name="rating" id="ratingValue" value="{% if existing_review %}{{ existing_review.rating }}{% else %}0{% endif %}" required>
+                    <div class="star-rating" id="starPicker">
+                        <i class="bi bi-star star" data-value="1"></i>
+                        <i class="bi bi-star star" data-value="2"></i>
+                        <i class="bi bi-star star" data-value="3"></i>
+                        <i class="bi bi-star star" data-value="4"></i>
+                        <i class="bi bi-star star" data-value="5"></i>
+                    </div>
+                    <p class="star-picker-hint" id="ratingText">{% if existing_review %}{% if existing_review.rating == 5 %}Tuyệt vời{% elif existing_review.rating == 4 %}Tốt{% elif existing_review.rating == 3 %}Bình thường{% elif existing_review.rating == 2 %}Tệ{% else %}Rất tệ{% endif %}{% else %}Chọn số sao đánh giá{% endif %}</p>
+
+                    <textarea name="comment"
+                              class="review-form-textarea"
+                              placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..."
+                              required>{% if existing_review %}{{ existing_review.comment }}{% endif %}</textarea>
+
+                    <div class="review-form-actions">
+                        <button type="submit" class="review-btn">
+                            {% if existing_review %}Cập nhật đánh giá{% else %}Gửi đánh giá{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% else %}
+            <div class="review-notice">
+                <i class="bi bi-bag-check"></i>
+                Bạn cần mua và hoàn thành đơn hàng trước khi có thể đánh giá sản phẩm này.
+            </div>
+            {% endif %}
+        {% else %}
+        <div class="review-notice">
+            <i class="bi bi-person-circle"></i>
+            <span>Vui lòng <a href="{% url 'accounts:login' %}" style="color:#111;font-weight:600;">đăng nhập</a> để đánh giá sản phẩm.</span>
+        </div>
+        {% endif %}
+
+        <hr class="review-divider">
+
+        <div id="reviewList">
+        {% for review in reviews %}
+        <div class="review-item">
+            <div class="review-avatar">
+                {% if review.user.avatar %}
+                    <img src="{{ review.user.avatar.url }}" alt="{{ review.user.name }}">
+                {% else %}
+                    {{ review.user.name|first|upper|default:"U" }}
+                {% endif %}
+            </div>
+            <div class="review-body">
+                <div class="review-header">
+                    <span class="review-user">{{ review.user.name }}</span>
+                    <span class="review-date">{{ review.created_at|date:"d/m/Y H:i" }}</span>
+                    <span class="review-verified"><i class="bi bi-patch-check-fill"></i> Đã mua hàng</span>
+                </div>
+                <div class="review-stars">
+                    {% for i in "12345" %}
+                        {% if forloop.counter <= review.rating %}
+                            <i class="bi bi-star-fill review-star-icon is-filled"></i>
+                        {% else %}
+                            <i class="bi bi-star review-star-icon"></i>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="review-content">{{ review.comment }}</div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="no-review" id="noReviewMsg">
+            <i class="bi bi-chat-square-text"></i>
+            Chưa có đánh giá nào. Hãy là người đầu tiên!
+        </div>
+        {% endfor %}
+        </div>
+
+        {% if has_more_reviews %}
+        <div class="review-load-more-wrap">
+            <button type="button" id="loadMoreReviewsBtn" class="review-btn is-outline"
+                    data-slug="{{ product.slug }}"
+                    data-offset="{{ reviews|length }}">
+                <i class="bi bi-chevron-down"></i> Xem thêm đánh giá
+            </button>
+        </div>
+        {% endif %}
+
+    </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const mainImage = document.getElementById('productMainImage');
+    const thumbButtons = Array.from(document.querySelectorAll('.product-detail-thumb-btn'));
+    const galleryPrevButton = document.getElementById('productGalleryPrev');
+    const galleryNextButton = document.getElementById('productGalleryNext');
+    const thumbPrevButton = document.getElementById('productThumbPrev');
+    const thumbNextButton = document.getElementById('productThumbNext');
+    const thumbViewport = document.getElementById('productThumbViewport');
+    const addToCartForm = document.getElementById('productAddToCartForm');
+    const cartMessage = document.getElementById('productCartMessage');
+
+    const hasGallery = Boolean(mainImage) && thumbButtons.length > 0;
+    let currentIndex = hasGallery ? Math.max(thumbButtons.findIndex((button) => button.classList.contains('is-active')), 0) : 0;
+
+    function updateThumbNavState() {
+        if (!thumbViewport || !thumbPrevButton || !thumbNextButton) {
+            return;
+        }
+
+        const maxScrollLeft = thumbViewport.scrollWidth - thumbViewport.clientWidth;
+        const hasOverflow = maxScrollLeft > 4;
+
+        thumbPrevButton.disabled = !hasOverflow || thumbViewport.scrollLeft <= 4;
+        thumbNextButton.disabled = !hasOverflow || thumbViewport.scrollLeft >= maxScrollLeft - 4;
+    }
+
+    function ensureThumbVisible(button) {
+        if (!thumbViewport || !button) {
+            return;
+        }
+
+        const buttonLeft = button.offsetLeft;
+        const buttonRight = buttonLeft + button.offsetWidth;
+        const viewportLeft = thumbViewport.scrollLeft;
+        const viewportRight = viewportLeft + thumbViewport.clientWidth;
+
+        if (buttonLeft < viewportLeft) {
+            thumbViewport.scrollTo({ left: buttonLeft, behavior: 'smooth' });
+        } else if (buttonRight > viewportRight) {
+            thumbViewport.scrollTo({ left: buttonRight - thumbViewport.clientWidth, behavior: 'smooth' });
+        }
+    }
+
+    function setActiveImage(index) {
+        if (!hasGallery || !thumbButtons.length) {
+            return;
+        }
+
+        currentIndex = (index + thumbButtons.length) % thumbButtons.length;
+        const activeButton = thumbButtons[currentIndex];
+        const imageSrc = activeButton.getAttribute('data-image-src');
+
+        if (imageSrc) {
+            mainImage.src = imageSrc;
+        }
+
+        thumbButtons.forEach((item) => item.classList.remove('is-active'));
+        activeButton.classList.add('is-active');
+        ensureThumbVisible(activeButton);
+        updateThumbNavState();
+    }
+
+    if (hasGallery) {
+        thumbButtons.forEach((button, index) => {
+            button.addEventListener('click', function () {
+                setActiveImage(index);
+            });
+        });
+
+        if (galleryPrevButton) {
+            galleryPrevButton.addEventListener('click', function () {
+                setActiveImage(currentIndex - 1);
+            });
+        }
+
+        if (galleryNextButton) {
+            galleryNextButton.addEventListener('click', function () {
+                setActiveImage(currentIndex + 1);
+            });
+        }
+
+        const scrollAmount = () => {
+            const firstThumb = thumbButtons[0];
+            return firstThumb ? firstThumb.offsetWidth * 3 : 240;
+        };
+
+        if (thumbPrevButton && thumbViewport) {
+            thumbPrevButton.addEventListener('click', function () {
+                thumbViewport.scrollBy({ left: -scrollAmount(), behavior: 'smooth' });
+            });
+        }
+
+        if (thumbNextButton && thumbViewport) {
+            thumbNextButton.addEventListener('click', function () {
+                thumbViewport.scrollBy({ left: scrollAmount(), behavior: 'smooth' });
+            });
+        }
+
+        if (thumbViewport) {
+            thumbViewport.addEventListener('scroll', updateThumbNavState);
+            window.addEventListener('resize', updateThumbNavState);
+        }
+
+        setActiveImage(currentIndex);
+    }
+
+    if (addToCartForm) {
+        addToCartForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            try {
+                const response = await fetch(addToCartForm.action, {
+                    method: 'POST',
+                    body: new FormData(addToCartForm),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                const data = await response.json();
+
+                if (cartMessage) {
+                    cartMessage.hidden = false;
+                    cartMessage.textContent = data.message || 'Không thể thêm vào giỏ hàng.';
+                }
+
+                if (data.success) {
+                    const cartCount = document.getElementById('cart-count');
+                    if (cartCount && typeof data.cart_count !== 'undefined') {
+                        cartCount.textContent = data.cart_count;
+                    }
+                }
+            } catch (error) {
+                if (cartMessage) {
+                    cartMessage.hidden = false;
+                    cartMessage.textContent = 'Không thể thêm vào giỏ hàng. Vui lòng thử lại.';
+                }
+            }
+        });
+    }
+
+    const favoriteBtn = document.getElementById('favoriteBtn');
+    const favoriteIcon = document.getElementById('favoriteIcon');
+
+    function setFavoriteState(isFavorited) {
+        if (!favoriteIcon) return;
+        if (isFavorited) {
+            favoriteIcon.className = 'bi bi-heart-fill';
+            favoriteIcon.style.color = '#ef4444';
+        } else {
+            favoriteIcon.className = 'bi bi-heart';
+            favoriteIcon.style.color = '#9ca3af';
+        }
+    }
+
+    if (favoriteBtn && favoriteIcon) {
+        setFavoriteState(favoriteBtn.dataset.favorited === '1');
+
+        favoriteBtn.addEventListener('click', async function () {
+            favoriteBtn.disabled = true;
+            try {
+                const res = await fetch(favoriteBtn.dataset.url, {
+                    method: 'GET',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    setFavoriteState(data.is_favorited);
+                    favoriteBtn.setAttribute('aria-label', data.is_favorited ? 'Bỏ yêu thích' : 'Yêu thích');
+                }
+            } catch (_) {}
+            favoriteBtn.disabled = false;
+        });
+    }
+
+    const stars = document.querySelectorAll('.star-rating .star');
+    const ratingValue = document.getElementById('ratingValue');
+    const ratingText = document.getElementById('ratingText');
+    const starRatingWrap = document.querySelector('.star-rating');
+
+    const starLabels = { 1: 'Rất tệ', 2: 'Tệ', 3: 'Bình thường', 4: 'Tốt', 5: 'Tuyệt vời' };
+
+    function highlightStars(value) {
+        stars.forEach(function (star) {
+            const v = parseInt(star.dataset.value);
+            if (v <= value) {
+                star.classList.remove('bi-star');
+                star.classList.add('bi-star-fill', 'active');
+            } else {
+                star.classList.remove('bi-star-fill', 'active');
+                star.classList.add('bi-star');
+            }
+        });
+    }
+
+    if (stars.length && ratingValue) {
+        const initVal = parseInt(ratingValue.value) || 0;
+        if (initVal > 0) highlightStars(initVal);
+
+        stars.forEach(function (star) {
+            star.addEventListener('mouseover', function () {
+                highlightStars(parseInt(this.dataset.value));
+                if (ratingText) ratingText.textContent = starLabels[this.dataset.value];
+            });
+
+            star.addEventListener('click', function () {
+                ratingValue.value = this.dataset.value;
+                if (ratingText) ratingText.textContent = starLabels[this.dataset.value];
+            });
+        });
+
+        if (starRatingWrap) {
+            starRatingWrap.addEventListener('mouseleave', function () {
+                const current = parseInt(ratingValue.value) || 0;
+                highlightStars(current);
+                if (ratingText) ratingText.textContent = current ? starLabels[current] : 'Chọn số sao đánh giá';
+            });
+        }
+    }
+
+    const loadMoreBtn = document.getElementById('loadMoreReviewsBtn');
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', async function () {
+            const slug = loadMoreBtn.dataset.slug;
+            const offset = parseInt(loadMoreBtn.dataset.offset, 10);
+
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.textContent = 'Đang tải...';
+
+            try {
+                const response = await fetch(
+                    '/products/' + slug + '/reviews/?offset=' + offset,
+                    { headers: { 'X-Requested-With': 'XMLHttpRequest' } }
+                );
+                const data = await response.json();
+
+                const reviewList = document.getElementById('reviewList');
+                const noMsg = document.getElementById('noReviewMsg');
+                if (noMsg) noMsg.remove();
+
+                data.reviews.forEach(function (review) {
+                    const stars = [1,2,3,4,5].map(function (i) {
+                        return i <= review.rating
+                            ? '<i class="bi bi-star-fill review-star-icon is-filled"></i>'
+                            : '<i class="bi bi-star review-star-icon"></i>';
+                    }).join('');
+
+                    const initial = review.user_name ? review.user_name[0].toUpperCase() : 'U';
+                    const avatarInner = review.avatar_url
+                        ? '<img src="' + review.avatar_url + '" alt="' + review.user_name + '">'
+                        : initial;
+
+                    const html = '<div class="review-item">'
+                        + '<div class="review-avatar">' + avatarInner + '</div>'
+                        + '<div class="review-body">'
+                        + '<div class="review-header">'
+                        + '<span class="review-user">' + review.user_name + '</span>'
+                        + '<span class="review-date">' + review.created_at + '</span>'
+                        + '<span class="review-verified"><i class="bi bi-patch-check-fill"></i> \u0110\u00e3 mua h\u00e0ng</span>'
+                        + '</div>'
+                        + '<div class="review-stars">' + stars + '</div>'
+                        + '<div class="review-content">' + review.comment + '</div>'
+                        + '</div></div>';
+
+                    reviewList.insertAdjacentHTML('beforeend', html);
+                });
+
+                loadMoreBtn.dataset.offset = data.next_offset;
+
+                if (data.has_more) {
+                    loadMoreBtn.disabled = false;
+                    loadMoreBtn.textContent = 'Xem thêm đánh giá';
+                } else {
+                    loadMoreBtn.parentElement.remove();
+                }
+            } catch (e) {
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.textContent = 'Xem thêm đánh giá';
+            }
+        });
+    }
+ });
+ </script>
+ 
+ {% endblock %}

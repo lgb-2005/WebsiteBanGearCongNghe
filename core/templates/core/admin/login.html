@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Đăng nhập Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/css/login.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="login-page">
+    <div class="login-container">
+        <div class="login-layout">
+            <div class="login-intro-panel">
+                <span class="login-badge">TechGear Admin</span>
+                <h1 class="login-main-title">Đăng nhập khu vực quản trị</h1>
+                <p class="login-subtitle">Chỉ tài khoản quản trị mới có thể truy cập admin dashboard để quản lý sản phẩm, thương hiệu, danh mục và các nội dung vận hành.</p>
+
+                <div class="login-feature-list">
+                    <div class="login-feature-item">
+                        <i class="bi bi-shield-lock"></i>
+                        <div>
+                            <strong>Phân quyền riêng biệt</strong>
+                            <span>Tài khoản admin và tài khoản người dùng được tách riêng để bảo vệ khu vực quản trị.</span>
+                        </div>
+                    </div>
+                    <div class="login-feature-item">
+                        <i class="bi bi-box-seam"></i>
+                        <div>
+                            <strong>Quản lý sản phẩm tập trung</strong>
+                            <span>Thêm, sửa và cập nhật dữ liệu sản phẩm trên một không gian làm việc riêng.</span>
+                        </div>
+                    </div>
+                    <div class="login-feature-item">
+                        <i class="bi bi-bar-chart-line"></i>
+                        <div>
+                            <strong>Theo dõi vận hành</strong>
+                            <span>Kiểm soát danh mục, thương hiệu và các module dashboard nhanh chóng hơn.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="login-form-panel">
+                <div class="login-form-header">
+                    <h2 class="login-form-title">Đăng nhập Admin</h2>
+                    <p class="login-form-desc">Sử dụng tài khoản quản trị để truy cập vào khu vực admin dashboard của hệ thống.</p>
+                </div>
+
+                {% if error_message %}
+                <div class="form-status error">{{ error_message }}</div>
+                {% endif %}
+
+                <form method="post" class="login-form" action="{% url 'core:admin_login' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ next_url }}">
+
+                    <div class="login-form-grid">
+                        <div class="input-group full-width">
+                            <label for="email">Email admin <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-envelope"></i>
+                                <input type="email" id="email" name="email" class="form-input" placeholder="admin@techgear.com" required>
+                            </div>
+                        </div>
+
+                        <div class="input-group full-width">
+                            <label for="password">Mật khẩu <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-lock"></i>
+                                <input type="password" id="password" name="password" class="form-input" placeholder="Nhập mật khẩu admin" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="login-actions">
+                        <button type="submit" class="btn-login">Đăng nhập Admin Dashboard</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

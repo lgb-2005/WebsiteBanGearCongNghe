@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chi tiết đơn hàng {{ order_info.order_code }}{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'orders/css/order_detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="order-detail-page py-4">
+    <div class="container order-detail-shell">
+        <nav class="order-detail-breadcrumb" aria-label="breadcrumb">
+            <a href="{% url 'core:home' %}">Trang chủ</a>
+            <span>/</span>
+            <a href="{% url 'accounts:profile' %}">Tài khoản</a>
+            <span>/</span>
+            <a href="{% url 'accounts:profile' %}#orders">Lịch sử mua hàng</a>
+            <span>/</span>
+            <strong>Chi tiết đơn hàng</strong>
+        </nav>
+
+        <div class="order-detail-hero order-detail-card">
+            <div>
+                <span class="order-detail-eyebrow">Đơn hàng</span>
+                <h1 class="order-detail-title">Chi tiết đơn hàng {{ order_info.order_code }}</h1>
+                <p class="order-detail-subtitle">Theo dõi thông tin đơn hàng, địa chỉ nhận hàng và các sản phẩm bạn đã đặt.</p>
+            </div>
+            <span class="order-status {{ order_info.status_class }}">{{ order_info.status }}</span>
+        </div>
+
+        <div class="order-detail-grid">
+            <div class="order-detail-main">
+                <div class="order-detail-card">
+                    <div class="order-detail-card-head">
+                        <h3>Thông tin đơn hàng</h3>
+                    </div>
+                    <div class="order-detail-info-grid">
+                        <div class="order-detail-info-item">
+                            <span class="order-detail-label">Mã đơn hàng</span>
+                            <strong>{{ order_info.order_code }}</strong>
+                        </div>
+                        <div class="order-detail-info-item">
+                            <span class="order-detail-label">Ngày đặt</span>
+                            <strong>{{ order_info.created_at }}</strong>
+                        </div>
+                        <div class="order-detail-info-item">
+                            <span class="order-detail-label">Trạng thái đơn hàng</span>
+                            <strong><span class="order-status {{ order_info.status_class }}">{{ order_info.status }}</span></strong>
+                        </div>
+                        <div class="order-detail-info-item">
+                            <span class="order-detail-label">Phương thức thanh toán</span>
+                            <strong>{{ order_info.payment_method }}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="order-detail-card">
+                    <div class="order-detail-card-head">
+                        <h3>Thông tin nhận hàng</h3>
+                    </div>
+                    <div class="order-detail-info-grid shipping-grid">
+                        <div class="order-detail-info-item">
+                            <span class="order-detail-label">Người nhận</span>
+                            <strong>{{ order_info.receiver_name }}</strong>
+                        </div>
+                        <div class="order-detail-info-item">
+                            <span class="order-detail-label">Số điện thoại</span>
+                            <strong>{{ order_info.receiver_phone }}</strong>
+                        </div>
+                        <div class="order-detail-info-item">
+                            <span class="order-detail-label">Email</span>
+                            <strong>{{ order_info.receiver_email }}</strong>
+                        </div>
+                        <div class="order-detail-info-item full-width">
+                            <span class="order-detail-label">Địa chỉ giao hàng</span>
+                            <strong>{{ order_info.shipping_address }}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="order-detail-card">
+                    <div class="order-detail-card-head">
+                        <h3>Danh sách sản phẩm</h3>
+                    </div>
+                    <div class="order-detail-products">
+                        {% for item in order_items %}
+                        <div class="order-detail-product-row">
+                            <div class="order-detail-product-main">
+                                <div class="order-detail-product-image">
+                                    {% if item.image_url %}
+                                    <img src="{{ item.image_url }}" alt="{{ item.product.name }}">
+                                    {% else %}
+                                    <div class="no-image">NO IMAGE AVAILABLE</div>
+                                    {% endif %}
+                                </div>
+                                <div class="order-detail-product-copy">
+                                    <a href="{% url 'products:product_detail' item.product.slug %}" class="order-detail-product-name">{{ item.product.name }}</a>
+                                    <div class="order-detail-product-meta">Đơn giá: {{ item.price }}đ</div>
+                                    <div class="order-detail-product-meta">Số lượng: {{ item.quantity }}</div>
+                                </div>
+                            </div>
+                            <div class="order-detail-product-total">
+                                {{ item.line_total }}đ
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="order-detail-empty">Không có sản phẩm trong đơn hàng này.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <aside class="order-detail-sidebar">
+                <div class="order-detail-card order-summary-card">
+                    <div class="order-detail-card-head">
+                        <h3>Tổng thanh toán</h3>
+                    </div>
+                    <div class="order-summary-list">
+                        <div class="order-summary-row">
+                            <span>Tạm tính</span>
+                            <strong>{{ order_info.subtotal }}</strong>
+                        </div>
+                        <div class="order-summary-row">
+                            <span>Phí vận chuyển</span>
+                            <strong>Miễn phí</strong>
+                        </div>
+                        <div class="order-summary-row total">
+                            <span>Tổng cộng</span>
+                            <strong>{{ order_info.total_price }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,269 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_content %}
+<div class="admin-overview-grid admin-orders-stat-grid">
+    <article class="admin-stat-card accent-dark">
+        <span class="admin-stat-icon"><i class="bi bi-chat-square-text"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Tổng đánh giá</span>
+            <strong class="admin-stat-value">{{ reviews_stats.total }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-green">
+        <span class="admin-stat-icon"><i class="bi bi-eye"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đang hiển thị</span>
+            <strong class="admin-stat-value">{{ reviews_stats.visible }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-red-soft">
+        <span class="admin-stat-icon"><i class="bi bi-eye-slash"></i></span>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đã ẩn</span>
+            <strong class="admin-stat-value">{{ reviews_stats.hidden }}</strong>
+        </div>
+    </article>
+</div>
+
+<section class="admin-panel">
+    <div class="admin-panel-header">
+        <div>
+            <h3>Danh sách đánh giá</h3>
+            <p>Kiểm duyệt, ẩn hoặc hiện lại các đánh giá sản phẩm.</p>
+        </div>
+    </div>
+
+    <form method="get" class="admin-orders-filter-bar">
+        <div class="admin-orders-filter-row is-search">
+            <div class="admin-form-field" style="margin-bottom:0;position:relative;">
+                <label for="reviews-search">Tìm kiếm</label>
+                <i class="bi bi-search" style="position:absolute;left:12px;bottom:11px;color:#9ca3af;font-size:14px;pointer-events:none;"></i>
+                <input id="reviews-search" type="text" name="q" value="{{ reviews_search_query }}"
+                       class="admin-form-control" style="padding-left:36px;"
+                       placeholder="Tên sản phẩm, tên khách, email, SĐT, nội dung...">
+            </div>
+        </div>
+
+        <div class="admin-orders-filter-row is-filters">
+            <div class="admin-form-field" style="margin-bottom:0;">
+                <label for="reviews-rating">Số sao</label>
+                <select id="reviews-rating" name="rating" class="admin-form-control">
+                    <option value="">Tất cả</option>
+                    {% for s in "12345" %}
+                    <option value="{{ s }}"{% if reviews_rating_filter == s %} selected{% endif %}>{{ s }} sao</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="admin-form-field" style="margin-bottom:0;">
+                <label for="reviews-visibility">Trạng thái</label>
+                <select id="reviews-visibility" name="visibility" class="admin-form-control">
+                    <option value="">Tất cả</option>
+                    <option value="visible"{% if reviews_visibility_filter == 'visible' %} selected{% endif %}>Đang hiển thị</option>
+                    <option value="hidden"{% if reviews_visibility_filter == 'hidden' %} selected{% endif %}>Đã ẩn</option>
+                </select>
+            </div>
+
+            <div class="admin-form-field" style="margin-bottom:0;">
+                <label for="reviews-date-from">Từ ngày</label>
+                <input id="reviews-date-from" type="date" name="date_from"
+                       value="{{ reviews_date_from }}" class="admin-form-control">
+            </div>
+
+            <div class="admin-form-field" style="margin-bottom:0;">
+                <label for="reviews-date-to">Đến ngày</label>
+                <input id="reviews-date-to" type="date" name="date_to"
+                       value="{{ reviews_date_to }}" class="admin-form-control">
+            </div>
+
+            <div class="admin-orders-filter-actions">
+                <button type="submit" class="admin-primary-btn">
+                    <i class="bi bi-funnel"></i> Lọc
+                </button>
+                {% if reviews_search_query or reviews_rating_filter or reviews_visibility_filter or reviews_date_from or reviews_date_to %}
+                <a href="{% url 'core:admin_reviews' %}" class="admin-ghost-btn">
+                    <i class="bi bi-x"></i> Xóa
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+
+    <form method="post" action="{% url 'core:admin_review_bulk' %}" id="bulkForm">
+        {% csrf_token %}
+        <div class="admin-product-list-head admin-orders-list-head" style="align-items:center;">
+            <div>
+                <span class="admin-section-eyebrow">Bảng dữ liệu</span>
+                <h4>Đang hiển thị {{ reviews_page.object_list|length }} / {{ reviews_total }} đánh giá</h4>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <select name="bulk_action" class="admin-form-control" style="width:auto;min-width:180px;">
+                    <option value="">Bulk Action</option>
+                    <option value="hide">Ẩn các đánh giá đã chọn</option>
+                    <option value="show">Hiện lại các đánh giá đã chọn</option>
+                </select>
+                <button type="submit" class="admin-ghost-btn">Áp dụng</button>
+            </div>
+        </div>
+
+        <div class="admin-product-table-wrap">
+            <table class="admin-product-table admin-orders-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">
+                            <input type="checkbox" id="selectAll" title="Chọn tất cả">
+                        </th>
+                        <th>STT</th>
+                        <th>Sản phẩm</th>
+                        <th>Khách hàng</th>
+                        <th>Sao</th>
+                        <th>Nội dung</th>
+                        <th>Ngày tạo</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for review in reviews %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="review_ids" value="{{ review.id }}" class="review-checkbox">
+                        </td>
+                        <td>{{ review.index }}</td>
+                        <td>
+                            <div class="admin-product-name-cell">
+                                <strong>{{ review.product_name|truncatechars:30 }}</strong>
+                                <span>#{{ review.product_id }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="admin-product-name-cell">
+                                <strong>{{ review.user_name }}</strong>
+                                <span>{{ review.user_email }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="color:#f59e0b;font-weight:700;">
+                                {% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}
+                            </span>
+                            <span style="font-size:12px;color:#6b7280;margin-left:4px;">{{ review.rating }}/5</span>
+                        </td>
+                        <td style="max-width:240px;">
+                            <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:#374151;">
+                                {{ review.comment|default:"—"|truncatechars:60 }}
+                            </span>
+                        </td>
+                        <td style="font-size:13px;">{{ review.created_at }}</td>
+                        <td>
+                            {% if review.is_visible %}
+                                <span class="status-badge success">Hiển thị</span>
+                            {% else %}
+                                <span class="status-badge danger">Đã ẩn</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="admin-table-actions">
+                                <a href="{% url 'core:admin_review_detail' review.id %}" class="admin-table-btn edit">Chi tiết</a>
+                                <button type="button"
+                                        class="admin-table-btn {% if review.is_visible %}danger{% else %}success{% endif %} js-toggle-review"
+                                        data-id="{{ review.id }}"
+                                        data-visible="{{ review.is_visible|yesno:'true,false' }}"
+                                        data-toggle-url="{% url 'core:admin_review_toggle' review.id %}">
+                                    {% if review.is_visible %}Ẩn{% else %}Hiện{% endif %}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9">
+                            <div class="admin-empty-card">Không có đánh giá nào phù hợp với điều kiện hiện tại.</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    {% if reviews_page.paginator.num_pages > 1 %}
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;padding-top:16px;flex-wrap:wrap;">
+        <span class="admin-field-hint">Trang {{ reviews_page.number }} / {{ reviews_page.paginator.num_pages }}</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            {% if reviews_page.has_previous %}
+                <a href="?page={{ reviews_page.previous_page_number }}{{ reviews_query_string }}" class="admin-ghost-btn">Trước</a>
+            {% endif %}
+            {% for page_number in reviews_page.paginator.page_range %}
+                {% if page_number == reviews_page.number %}
+                    <span class="admin-primary-btn" style="pointer-events:none;">{{ page_number }}</span>
+                {% elif page_number >= reviews_page.number|add:'-2' and page_number <= reviews_page.number|add:'2' %}
+                    <a href="?page={{ page_number }}{{ reviews_query_string }}" class="admin-ghost-btn">{{ page_number }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if reviews_page.has_next %}
+                <a href="?page={{ reviews_page.next_page_number }}{{ reviews_query_string }}" class="admin-ghost-btn">Sau</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Quick View Modal -->
+<div id="reviewQuickModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:32px;max-width:560px;width:90%;max-height:90vh;overflow-y:auto;position:relative;">
+        <button type="button" id="closeQuickModal" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;">Chi tiết đánh giá</h3>
+        <div id="quickModalContent"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const csrfToken = '{{ csrf_token }}';
+
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.review-checkbox').forEach(function (cb) {
+                cb.checked = selectAll.checked;
+            });
+        });
+    }
+
+    document.querySelectorAll('.js-toggle-review').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const id = this.dataset.id;
+            const url = this.dataset.toggleUrl;
+            const row = this.closest('tr');
+            btn.disabled = true;
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const badge = row.querySelector('.status-badge');
+                    if (data.is_visible) {
+                        badge.className = 'status-badge success';
+                        badge.textContent = 'Hiển thị';
+                        btn.className = 'admin-table-btn danger js-toggle-review';
+                        btn.textContent = 'Ẩn';
+                        btn.dataset.visible = 'true';
+                    } else {
+                        badge.className = 'status-badge danger';
+                        badge.textContent = 'Đã ẩn';
+                        btn.className = 'admin-table-btn success js-toggle-review';
+                        btn.textContent = 'Hiện';
+                        btn.dataset.visible = 'false';
+                    }
+                }
+            } catch (e) {}
+            btn.disabled = false;
+        });
+    });
+})();
+</script>
+{% endblock %}

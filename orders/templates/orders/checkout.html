@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% block title %}
+Checkout | TechGear
+{% endblock %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet"
+      href="{% static 'orders/css/checkout_style.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'orders/js/checkout.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<section class="checkout-page">
+
+    <div class="checkout-container">
+
+        <div class="checkout-header">
+            <span class="checkout-eyebrow">
+                ĐẶT HÀNG
+            </span>
+
+            <h1>
+                Hoàn tất đơn hàng
+            </h1>
+
+            <p>
+                Kiểm tra thông tin giao hàng và xác nhận đơn hàng của bạn.
+            </p>
+        </div>
+
+        <div class="checkout-layout">
+
+            <!-- LEFT -->
+
+            <div class="checkout-main">
+
+                <div class="checkout-card">
+
+                    <h3>Thông tin giao hàng</h3>
+
+                    <div class="checkout-form-grid">
+
+                        <div class="checkout-field">
+                            <label>Họ và tên</label>
+                            <input
+                                type="text"
+                                id="fullName"
+                                value="{{ user_info.name|default:'' }}"
+                            >
+                        </div>
+
+                        <div class="checkout-field">
+                            <label>Số điện thoại</label>
+                            <input
+                                type="text"
+                                id="phone"
+                                value="{{ user_info.phone|default:'' }}"
+                            >
+                        </div>
+
+                        <div class="checkout-field full-width">
+                            <label>Email</label>
+                            <input
+                                type="email"
+                                id="email"
+                                value="{{ user_info.email|default:'' }}"
+                            >
+                        </div>
+
+                        <div class="checkout-field">
+                            <label>Tỉnh / Thành phố</label>
+                        
+                            <select
+                                id="provinceSelect"
+                                data-selected="{{ user_info.province_code|default:'' }}"
+                            >
+                                <option value="">
+                                    Chọn tỉnh/thành
+                                </option>
+                            </select>
+
+                            <input
+                                type="hidden"
+                                id="provinceCode"
+                            >
+                            <input
+                                type="hidden"
+                                id="provinceName"
+                            >
+                        </div>
+                        
+                        <div class="checkout-field">
+                            <label>Phường / Xã</label>
+                        
+                            <select
+                                id="wardSelect"
+                                data-selected="{{ user_info.ward_code|default:'' }}"
+                            >
+                                <option value="">
+                                    Chọn phường/xã
+                                </option>
+                            </select>
+                            <input
+                                type="hidden"
+                                id="wardCode"
+                            >
+                            <input
+                                type="hidden"
+                                id="wardName"
+                            >
+                        </div>
+                        
+                        <div class="checkout-field full-width">
+                            <label>Địa chỉ chi tiết</label>
+                        
+                            <input
+                                type="text"
+                                id="streetAddress"
+                                value="{{ user_info.street_address|default:'' }}"
+                                placeholder="Số nhà, tên đường..."
+                            >
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="checkout-card">
+
+                    <h3>Phương thức thanh toán</h3>
+
+                    <div class="payment-method">
+
+                        <label class="payment-method-badge" style="cursor:pointer;">
+                            <input
+                                type="radio"
+                                name="payment_method"
+                                id="paymentCOD"
+                                value="cod"
+                                checked
+                                style="margin-right:10px;"
+                            >
+                            <i class="bi bi-cash-stack"></i>
+                            <div>
+                                <strong>Thanh toán khi nhận hàng (COD)</strong>
+                                <p>Thanh toán khi nhận hàng.</p>
+                            </div>
+                        </label>
+
+                        <label class="payment-method-badge" style="cursor:pointer;margin-top:12px;">
+                            <input
+                                type="radio"
+                                name="payment_method"
+                                id="paymentVNPAY"
+                                value="vnpay"
+                                style="margin-right:10px;"
+                            >
+                            <i class="bi bi-credit-card"></i>
+                            <div>
+                                <strong>Thanh toán qua VNPay</strong>
+                                <p>Thẻ ATM / Thẻ quốc tế / QR Code.</p>
+                            </div>
+                        </label>
+
+                    </div>
+
+                    <div id="paymentError" style="display:none;margin-top:12px;padding:12px;background:#fee2e2;border-radius:6px;color:#991b1b;font-size:14px;"></div>
+
+                </div>
+
+            </div>
+
+            <!-- RIGHT -->
+
+            <aside class="checkout-sidebar">
+
+                <div class="checkout-card">
+
+                    <h3>Đơn hàng của bạn</h3>
+
+                    {% for item in cart_items %}
+
+                    <div class="checkout-product">
+
+                        <img
+                            src="{{ item.product.image_urls.0 }}"
+                            alt="{{ item.product.name }}"
+                        >
+
+                        <div>
+
+                            <strong>
+                                {{ item.product.name }}
+                            </strong>
+
+                            <p>
+                                Số lượng: {{ item.quantity }}
+                            </p>
+
+                        </div>
+
+                        <span>
+                            {{ item.formatted_line_total }}đ
+                        </span>
+
+                    </div>
+
+                    {% endfor %}
+
+                    <hr>
+
+                    <div class="summary-row">
+                        <span>Tạm tính</span>
+                        <strong>
+                            {{ subtotal_formatted }}đ
+                        </strong>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Phí vận chuyển</span>
+                        <strong>Miễn phí</strong>
+                    </div>
+
+                    <div class="summary-row total">
+                        <span>Tổng cộng</span>
+                        <strong>
+                            {{ subtotal_formatted }}đ
+                        </strong>
+                    </div>
+
+                    {% if has_stock_error %}
+                        <div class="checkout-stock-error">
+                            <i class="bi bi-exclamation-circle"></i>
+                            <span>{{ stock_error_message }}</span>
+                        </div>
+                    {% endif %}
+
+                    <button
+                        class="place-order-btn"
+                        id="placeOrderBtn"
+                        {% if has_stock_error %}disabled{% endif %}
+                    >
+                        Đặt hàng ngay
+                    </button>
+
+                    <script>
+                    (function() {
+                        const params = new URLSearchParams(window.location.search);
+                        const err = params.get('payment_error');
+                        if (err) {
+                            const el = document.getElementById('paymentError');
+                            if (el) { el.style.display = 'block'; el.textContent = decodeURIComponent(err.replace(/\+/g, ' ')); }
+                        }
+                    })();
+                    </script>
+
+                </div>
+
+            </aside>
+
+        </div>
+
+    </div>
+
+</section>
+{% endblock %}

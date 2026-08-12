@@ -1,0 +1,100 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_topbar_actions %}
+<a href="{% url 'core:admin_banner_create' %}" class="admin-primary-btn">
+    <i class="bi bi-plus-lg"></i>
+    Thêm banner
+</a>
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-panel admin-panel-wide">
+    <div class="admin-product-list-card">
+        <div class="admin-product-list-head">
+            <div>
+                <span class="admin-section-eyebrow">Danh sách banner</span>
+                <h4>Banner hiện có</h4>
+            </div>
+            <span class="admin-list-count">{{ banners|length }} banner</span>
+        </div>
+
+        <div class="admin-product-table-wrap">
+            <table class="admin-product-table admin-brand-table">
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">Ảnh</th>
+                        <th>Vị trí</th>
+                        <th>Thứ tự</th>
+                        <th>Trạng thái</th>
+                        <th>Lịch</th>
+                        <th>Đường dẫn</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for banner in banners %}
+                    <tr>
+                        <td>
+                            {% if banner.image %}
+                            <img src="{{ banner.image.url }}" alt="Banner" style="width: 100px; height: 60px; object-fit: cover; border-radius: 6px;">
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-badge info">{{ banner.get_position_display }}</span>
+                        </td>
+                        <td>
+                            <span class="status-badge neutral">{{ banner.display_order }}</span>
+                        </td>
+                        <td>
+                            {% if banner.is_active %}
+                                <span class="status-badge success">Đang bật</span>
+                            {% else %}
+                                <span class="status-badge danger">Đã tắt</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="admin-product-name-cell">
+                                <span>{% if banner.start_at %}{{ banner.start_at|date:"d/m/Y H:i" }}{% else %}—{% endif %}</span>
+                                <span>→ {% if banner.end_at %}{{ banner.end_at|date:"d/m/Y H:i" }}{% else %}—{% endif %}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if banner.cta_url %}
+                                <span class="status-badge neutral">{{ banner.cta_url }}</span>
+                            {% else %}
+                                <span>—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="admin-table-actions">
+                                <a href="{% url 'core:admin_banner_edit' banner_id=banner.id %}" class="admin-table-btn edit">Sửa</a>
+                                <form method="post" action="{% url 'core:admin_banner_toggle' banner_id=banner.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="admin-table-btn {% if banner.is_active %}warning{% else %}success{% endif %}">
+                                        {% if banner.is_active %}Tắt{% else %}Bật{% endif %}
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'core:admin_banner_delete' banner_id=banner.id %}" onsubmit="return confirm('Bạn có chắc muốn xóa banner này?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="admin-table-btn delete">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="admin-empty-state">
+                                <i class="bi bi-image"></i>
+                                <strong>Chưa có banner nào</strong>
+                                <span>Hãy thêm banner đầu tiên để hiển thị trên trang chủ.</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

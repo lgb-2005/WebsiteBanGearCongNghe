@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}TechGear - Gear Công Nghệ & Gaming{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=4">
+{% endblock %}
+
+{% block content %}
+<div class="hp-root">
+
+    <!-- HERO -->
+    {% if hero_banners %}
+    <section class="hp-hero">
+        <div class="container">
+            <div class="hero-slider" data-autoplay="5000" id="hero-slider">
+                <div class="hero-slider-track">
+                    {% for banner in hero_banners %}
+                    <div class="hero-slide" data-index="{{ forloop.counter0 }}" {% if banner.cta_url %}data-url="{{ banner.cta_url }}"{% endif %}>
+                        <img src="{{ banner.image.url }}" alt="Banner" class="hero-slide-img">
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="hero-slider-dots">
+                    {% for banner in hero_banners %}
+                    <button type="button" class="hero-slider-dot{% if forloop.first %} active{% endif %}" data-index="{{ forloop.counter0 }}" aria-label="Chuyển đến slide {{ forloop.counter }}"></button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- SHOWCASE -->
+    <div class="container hp-body">
+        {% for section in showcase_sections %}
+        <section class="sc-section">
+
+            <!-- Section head: accent bar | title | count | more-btn -->
+            <div class="sc-head">
+                <div class="sc-head-left">
+                    <div class="sc-accent-bar"></div>
+                    <h{% if forloop.first %}1{% else %}2{% endif %} class="sc-title">{{ section.title }}</h{% if forloop.first %}1{% else %}2{% endif %}>
+                    <span class="sc-count">{{ section.product_count }} sản phẩm</span>
+                    <a href="{% url 'products:category_products' category_slug=section.category.slug %}" class="sc-more-btn">
+                        Xem tất cả <i class="bi bi-arrow-right-short"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filter pills (dưới title) -->
+            <div class="sc-filters"
+                 data-section="{{ forloop.counter }}"
+                 data-category-ids="{{ section.showcase_category_ids|join:',' }}">
+                {% for pill in section.filters %}
+                <button type="button"
+                        class="sc-pill{% if forloop.first %} sc-pill--active{% endif %}"
+                        data-brand="{{ pill.brand }}"
+                        data-brand-id="{{ pill.brand_id }}">{{ pill.label }}</button>
+                {% endfor %}
+            </div>
+
+            <div class="sc-body">
+                <!-- Product grid: mỗi card có data-brand để JS ẩn/hiện -->
+                <div class="sc-grid" id="sc-grid-{{ forloop.counter }}">
+                    {% for product in section.products %}
+                    <a href="{% url 'products:product_detail' product.slug %}"
+                       class="pc"
+                       data-brand="{{ product.brand_name }}">
+                        <div class="pc-img-wrap">
+                            {% if product.discount_percent %}
+                            <span class="pc-badge pc-badge--sale">-{{ product.discount_percent }}%</span>
+                            {% endif %}
+                            {% if product.stock and product.stock <= 5 %}
+                            <span class="pc-badge pc-badge--stock">Sắp hết</span>
+                            {% endif %}
+                            {% if product.image_url %}
+                            <img src="{{ product.image_url }}" alt="{{ product.name }}" class="pc-img">
+                            {% else %}
+                            <img src="{% static 'images/banner1.jpg' %}" alt="{{ product.name }}" class="pc-img">
+                            {% endif %}
+                        </div>
+                        <div class="pc-body">
+                            {% if product.brand_name %}<span class="pc-brand">{{ product.brand_name }}</span>{% endif %}
+                            <h3 class="pc-name">{{ product.name }}</h3>
+                            <div class="pc-price-row">
+                                <span class="pc-price">{{ product.price }}</span>
+                                {% if product.old_price %}<span class="pc-old-price">{{ product.old_price }}</span>{% endif %}
+                            </div>
+                        </div>
+                        <div class="pc-hover-bar"></div>
+                    </a>
+                    {% endfor %}
+                </div>
+
+                <aside class="sc-aside">
+                    <div class="sc-aside-header">
+                        <i class="bi bi-star-fill"></i>
+                        {{ section.panel_label }}
+                    </div>
+                    <div class="sc-aside-list">
+                        {% for item in section.highlights %}
+                        <a href="{% url 'products:product_detail' item.slug %}" class="sc-aside-item">
+                            <div class="sc-aside-thumb-wrap">
+                                {% if item.image_url %}
+                                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="sc-aside-thumb">
+                                {% else %}
+                                <img src="{% static 'images/banner2.jpg' %}" alt="{{ item.name }}" class="sc-aside-thumb">
+                                {% endif %}
+                            </div>
+                            <div class="sc-aside-info">
+                                <span class="sc-aside-name">{{ item.name }}</span>
+                                <span class="sc-aside-meta">{{ item.meta }}</span>
+                            </div>
+                            <i class="bi bi-chevron-right sc-aside-chevron"></i>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </aside>
+            </div>
+
+        </section>
+        {% empty %}
+        <div class="sc-empty">
+            <i class="bi bi-box-seam"></i>
+            <p>Chưa có sản phẩm nào để hiển thị.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var PRODUCT_DETAIL_BASE = "{% url 'products:product_detail' slug='__SLUG__' %}".replace('__SLUG__/', '');
+    var STATIC_PLACEHOLDER = "{% static 'images/banner1.jpg' %}";
+
+    function formatCurrency(val) {
+        if (!val && val !== 0) return '';
+        return Number(val).toLocaleString('vi-VN') + '₫';
+    }
+
+    function renderCard(p) {
+        var discountBadge = p.discount_percent ? '<span class="pc-badge pc-badge--sale">-' + p.discount_percent + '%</span>' : '';
+        var stockBadge = (p.stock && p.stock <= 5) ? '<span class="pc-badge pc-badge--stock">Sắp hết</span>' : '';
+        var img = p.image_url ? p.image_url : STATIC_PLACEHOLDER;
+        var brandHtml = p.brand_name ? '<span class="pc-brand">' + p.brand_name + '</span>' : '';
+        var oldPrice = p.old_price ? '<span class="pc-old-price">' + p.old_price + '</span>' : '';
+        var href = PRODUCT_DETAIL_BASE + p.slug + '/';
+        return '<a href="' + href + '" class="pc" data-brand="' + (p.brand_name || '') + '">'
+            + '<div class="pc-img-wrap">'
+            + discountBadge + stockBadge
+            + '<img src="' + img + '" alt="' + p.name + '" class="pc-img">'
+            + '</div>'
+            + '<div class="pc-body">'
+            + brandHtml
+            + '<h3 class="pc-name">' + p.name + '</h3>'
+            + '<div class="pc-price-row"><span class="pc-price">' + p.price + '</span>' + oldPrice + '</div>'
+            + '</div>'
+            + '<div class="pc-hover-bar"></div>'
+            + '</a>';
+    }
+
+    document.querySelectorAll('.sc-filters').forEach(function (filterRow) {
+        var sectionId = filterRow.dataset.section;
+        var categoryIds = filterRow.dataset.categoryIds || '';
+        var grid = document.getElementById('sc-grid-' + sectionId);
+        if (!grid) return;
+
+        filterRow.querySelectorAll('.sc-pill').forEach(function (pill) {
+            pill.addEventListener('click', function () {
+                filterRow.querySelectorAll('.sc-pill').forEach(function (p) {
+                    p.classList.remove('sc-pill--active');
+                });
+                pill.classList.add('sc-pill--active');
+
+                var brandId = pill.dataset.brandId || '';
+                var url = '/api/showcase/products/?category_ids=' + categoryIds;
+                if (brandId) url += '&brand_id=' + brandId;
+
+                grid.style.opacity = '0.4';
+                fetch(url)
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        grid.innerHTML = data.products.map(renderCard).join('');
+                        grid.style.opacity = '1';
+                    })
+                    .catch(function () { grid.style.opacity = '1'; });
+            });
+        });
+    });
+
+    // Hero slider
+    (function () {
+        var slider = document.getElementById('hero-slider');
+        if (!slider) return;
+
+        var track = slider.querySelector('.hero-slider-track');
+        var slides = Array.from(track.querySelectorAll('.hero-slide'));
+        var dots = Array.from(slider.querySelectorAll('.hero-slider-dot'));
+        var autoplayMs = parseInt(slider.dataset.autoplay || '5000', 10);
+        var currentIndex = 0;
+        var timer = null;
+        var isHovering = false;
+
+        function showSlide(index) {
+            if (index < 0) index = slides.length - 1;
+            if (index >= slides.length) index = 0;
+            currentIndex = index;
+
+            slides.forEach(function (slide, i) {
+                slide.classList.toggle('active', i === currentIndex);
+            });
+            dots.forEach(function (dot, i) {
+                dot.classList.toggle('active', i === currentIndex);
+            });
+        }
+
+        function next() {
+            showSlide(currentIndex + 1);
+        }
+
+        function start() {
+            if (timer) clearInterval(timer);
+            timer = setInterval(next, autoplayMs);
+        }
+
+        function stop() {
+            if (timer) clearInterval(timer);
+        }
+
+        dots.forEach(function (dot) {
+            dot.addEventListener('click', function () {
+                showSlide(parseInt(dot.dataset.index, 10));
+                start();
+            });
+        });
+
+        slides.forEach(function (slide) {
+            slide.addEventListener('click', function () {
+                var url = slide.dataset.url;
+                if (url) {
+                    window.location.href = url;
+                }
+            });
+        });
+
+        slider.addEventListener('mouseenter', function () {
+            isHovering = true;
+            stop();
+        });
+        slider.addEventListener('mouseleave', function () {
+            isHovering = false;
+            start();
+        });
+
+        showSlide(0);
+        start();
+    }());
+}());
+</script>
+{% endblock %}

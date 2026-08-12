@@ -1,0 +1,773 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Hồ sơ tài khoản{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'accounts/css/profile.css' %}">
+
+<div class="profile-page py-4">
+
+    <div class="container">
+
+        <!-- Tabs -->
+        <div class="profile-tabs d-flex">
+            <div class="tab-item{% if not orders_has_filters %} active{% endif %}" data-tab="profile">Thông tin cá nhân</div>
+            <div class="tab-item{% if orders_has_filters %} active{% endif %}" data-tab="orders">Lịch sử mua hàng</div>
+            <div class="tab-item" data-tab="wishlist">Sản phẩm yêu thích</div>
+        </div>
+
+        <!-- ================= PROFILE ================= -->
+        <div class="profile-card tab-content{% if not orders_has_filters %} active{% endif %}" id="profile">
+
+            <div class="row">
+
+                <div class="col-lg-3 text-center profile-avatar-col">
+                    <div class="avatar-box">
+                        {% if user.avatar %}
+                            <img src="{{ user.avatar.url }}" alt="{{ user.name|default:user.email }}" class="profile-avatar-image">
+                        {% else %}
+                            <div class="no-avatar">NO IMAGE AVAILABLE</div>
+                        {% endif %}
+                    </div>
+
+                    <button class="btn btn-light avatar-btn mt-3" type="button">
+                        Thay đổi hình đại diện
+                    </button>
+                </div>
+
+                <div class="col-lg-6 profile-info">
+
+                    <div class="info-row">
+                        <div class="label">Họ tên</div>
+                        <div class="value">{{ user.name|default:"Chưa cập nhật" }}</div>
+                    </div>
+
+
+                    <div class="info-row">
+                        <div class="label">Địa chỉ email</div>
+                        <div class="value">{{ user.email }}</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="label">Trạng thái</div>
+                        <div class="value">{% if user.is_active %}Đang hoạt động{% else %}Tạm khóa{% endif %}</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="label">Số điện thoại</div>
+                        <div class="value">{{ user.phone|default:"Chưa cập nhật" }}</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="label">Địa chỉ</div>
+                        <div class="value">{{ user.full_address|default:"Chưa cập nhật" }}</div>
+                    </div>
+
+                </div>
+
+                <div class="col-lg-3 profile-actions d-flex flex-column align-items-end">
+
+                    <button class="btn action-btn">Cập nhật thông tin</button>
+                    <button class="btn action-btn">Đổi mật khẩu</button>
+
+                    <button class="btn logout-btn" type="button" data-logout-url="{% url 'accounts:logout' %}">
+                        <i class="bi bi-box-arrow-right me-2"></i>
+                        Đăng xuất
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ================= ORDERS ================= -->
+        <div class="profile-card tab-content{% if orders_has_filters %} active{% endif %}" id="orders">
+
+            <h3 class="order-title">Lịch sử mua hàng</h3>
+
+            <form method="get" class="order-toolbar">
+                <div class="order-search-shell">
+                    <i class="bi bi-search order-search-icon"></i>
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ order_search }}"
+                        class="order-search-input"
+                        placeholder="Tìm theo mã đơn hàng hoặc tên sản phẩm..."
+                    >
+                </div>
+
+                <div class="order-filter-pills">
+                    <button type="submit" name="status" value="" class="order-filter-pill{% if not order_status_filter %} is-active{% endif %}">
+                        Tất cả
+                    </button>
+                    <button type="submit" name="status" value="completed" class="order-filter-pill{% if order_status_filter == 'completed' %} is-active{% endif %}">
+                        Hoàn thành
+                    </button>
+                    <button type="submit" name="status" value="incomplete" class="order-filter-pill{% if order_status_filter == 'incomplete' %} is-active{% endif %}">
+                        Chưa hoàn thành
+                    </button>
+                </div>
+            </form>
+
+            <div class="orders-result-count">
+                {% if orders_has_filters %}
+                    Tìm thấy {{ orders_result_count }} đơn hàng phù hợp
+                {% else %}
+                    Đang hiển thị {{ orders_result_count }} đơn hàng
+                {% endif %}
+            </div>
+
+            <div class="orders-history-list">
+                {% for order in orders %}
+                <a href="{% url 'orders:order_detail' order.order_code %}" class="order-history-card text-decoration-none">
+                    <div class="order-history-card-top">
+                        <div>
+                            <div class="order-history-code">Đơn hàng #{{ order.order_code }}</div>
+                            <div class="order-history-date">{{ order.created_at }}</div>
+                        </div>
+                        <span class="order-status {{ order.status_class }}">
+                            {{ order.status }}
+                        </span>
+                    </div>
+
+                    <div class="order-history-products">
+                        {% for product in order.products %}
+                        <div class="order-history-product">
+                            <div class="order-history-product-image">
+                                {% if product.image_url %}
+                                    <img src="{{ product.image_url }}" alt="{{ product.name }}">
+                                {% else %}
+                                    <div class="no-image">NO IMAGE AVAILABLE</div>
+                                {% endif %}
+                            </div>
+                            <div class="order-history-product-copy">
+                                <div class="order-history-product-name">{{ product.name }}</div>
+                                <div class="order-history-product-meta">
+                                    <span>SL: {{ product.quantity }}</span>
+                                    <span>{{ product.price }}</span>
+                                </div>
+                            </div>
+                            <div class="order-history-product-total">{{ product.line_total }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="order-history-footer">
+                        <span>Tổng tiền đơn hàng</span>
+                        <span class="order-history-footer-total">{{ order.total_price }}</span>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="orders-empty-state">
+                    {% if orders_has_filters %}
+                        <div class="orders-empty-search-icon">
+                            <i class="bi bi-search"></i>
+                        </div>
+                        <h4>Không tìm thấy đơn hàng</h4>
+                        <p>Không có đơn hàng nào phù hợp với điều kiện tìm kiếm.</p>
+                    {% else %}
+                        <h4>Bạn chưa có đơn hàng nào</h4>
+                        <p>Hãy khám phá các sản phẩm nổi bật và bắt đầu đơn hàng đầu tiên của bạn.</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if order_page.has_other_pages %}
+            <div class="profile-pagination">
+                {% if order_page.has_previous %}
+                    <a href="?search={{ order_search }}&status={{ order_status_filter }}&order_page={{ order_page.previous_page_number }}#orders" class="profile-page-btn">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                {% endif %}
+                {% for num in order_page.paginator.page_range %}
+                    {% if num == order_page.number %}
+                        <span class="profile-page-btn is-active">{{ num }}</span>
+                    {% elif num >= order_page.number|add:"-2" and num <= order_page.number|add:"2" %}
+                        <a href="?search={{ order_search }}&status={{ order_status_filter }}&order_page={{ num }}#orders" class="profile-page-btn">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+                {% if order_page.has_next %}
+                    <a href="?search={{ order_search }}&status={{ order_status_filter }}&order_page={{ order_page.next_page_number }}#orders" class="profile-page-btn">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        </div>
+
+        <!-- ================= WISHLIST ================= -->
+        <div class="profile-card tab-content" id="wishlist">
+
+            <h3 class="wishlist-title">Sản phẩm yêu thích</h3>
+
+            <div class="wishlist-grid">
+
+                {% for favorite in favorites %}
+                <a href="{% url 'products:product_detail' favorite.product.slug %}"
+                   class="wishlist-item text-decoration-none">
+
+                    <div class="wishlist-img">
+                        {% if favorite.discount_percent %}
+                            <span class="discount-badge">-{{ favorite.discount_percent }}%</span>
+                        {% endif %}
+                        {% if favorite.product.main_image %}
+                            <img src="{{ favorite.product.main_image.url|default:favorite.product.main_image }}"
+                                 alt="{{ favorite.product.name }}">
+                        {% else %}
+                            <div class="no-image">NO IMAGE AVAILABLE</div>
+                        {% endif %}
+                    </div>
+
+                    {% if favorite.product.brand %}
+                    <div style="font-size:11px;color:#9ca3af;margin-top:8px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;">
+                        {{ favorite.product.brand.name }}
+                    </div>
+                    {% endif %}
+
+                    <div class="wishlist-name">{{ favorite.product.name }}</div>
+
+                    <div class="wishlist-price">
+                        <span class="price-new">{{ favorite.current_price }}</span>
+                        {% if favorite.old_price %}
+                            <span class="price-old">{{ favorite.old_price }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="wishlist-stock {% if favorite.product.stock > 0 %}is-in-stock{% else %}is-out-of-stock{% endif %}">
+                        {% if favorite.product.stock > 0 %}Còn hàng{% else %}Hết hàng{% endif %}
+                    </div>
+
+                </a>
+
+                {% empty %}
+                <div style="grid-column:1/-1;text-align:center;padding:40px 0;color:#9ca3af;">
+                    <i class="bi bi-heart" style="font-size:40px;display:block;margin-bottom:12px;"></i>
+                    <p style="font-size:15px;">Bạn chưa có sản phẩm yêu thích nào.</p>
+                </div>
+                {% endfor %}
+
+            </div>
+
+            {% if fav_page.has_other_pages %}
+            <div class="profile-pagination">
+                {% if fav_page.has_previous %}
+                    <a href="?fav_page={{ fav_page.previous_page_number }}#wishlist" class="profile-page-btn">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                {% endif %}
+                {% for num in fav_page.paginator.page_range %}
+                    {% if num == fav_page.number %}
+                        <span class="profile-page-btn is-active">{{ num }}</span>
+                    {% elif num >= fav_page.number|add:"-2" and num <= fav_page.number|add:"2" %}
+                        <a href="?fav_page={{ num }}#wishlist" class="profile-page-btn">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+                {% if fav_page.has_next %}
+                    <a href="?fav_page={{ fav_page.next_page_number }}#wishlist" class="profile-page-btn">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        </div>
+
+    </div>
+
+<!-- JS chuyển tab -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    const tabs = document.querySelectorAll(".tab-item");
+    const contents = document.querySelectorAll(".tab-content");
+
+    function activateTab(tabId) {
+        tabs.forEach(t => t.classList.remove("active"));
+        contents.forEach(c => c.classList.remove("active"));
+        const targetTab = document.querySelector(`.tab-item[data-tab="${tabId}"]`);
+        const targetContent = document.getElementById(tabId);
+        if (targetTab) targetTab.classList.add("active");
+        if (targetContent) targetContent.classList.add("active");
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            const tabId = tab.dataset.tab;
+            activateTab(tabId);
+            history.replaceState(null, '', '#' + tabId);
+        });
+    });
+
+    const validTabs = Array.from(tabs).map(t => t.dataset.tab);
+
+    function activateFromHash() {
+        const hash = location.hash.replace('#', '');
+        if (hash && validTabs.includes(hash)) {
+            activateTab(hash);
+        }
+    }
+
+    activateFromHash();
+    window.addEventListener('hashchange', activateFromHash);
+
+    const profileBtn = document.querySelectorAll(".action-btn")[0];
+    const passwordBtn = document.querySelectorAll(".action-btn")[1];
+    const avatarBtn = document.querySelector(".avatar-btn");
+    const logoutBtn = document.querySelector(".logout-btn");
+
+    const profileModal = document.getElementById("profileModal");
+    const passwordModal = document.getElementById("passwordModal");
+
+    function openModal(modal) {
+        modal.classList.add("active");
+        document.body.classList.add("modal-open");
+    }
+
+    function closeModal(modal) {
+        modal.classList.remove("active");
+        if (!document.querySelector(".custom-modal.active")) {
+            document.body.classList.remove("modal-open");
+        }
+    }
+
+    // mở modal
+    profileBtn.onclick = () => openModal(profileModal);
+    passwordBtn.onclick = () => openModal(passwordModal);
+    if (avatarBtn) {
+        avatarBtn.onclick = () => openModal(profileModal);
+    }
+    if (logoutBtn) {
+        logoutBtn.onclick = async () => {
+            try {
+                const response = await fetch(logoutBtn.dataset.logoutUrl, {
+                    method: "GET",
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = data.redirect_url || "/";
+                }
+            } catch (error) {
+                window.location.href = "/";
+            }
+        };
+    }
+
+    // đóng modal
+    document.querySelectorAll(".custom-modal").forEach(modal => {
+        modal.onclick = (e) => {
+            if (e.target === modal) closeModal(modal);
+        };
+    });
+
+    document.querySelectorAll(".close-modal").forEach(button => {
+        button.onclick = () => closeModal(button.closest(".custom-modal"));
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            document.querySelectorAll(".custom-modal.active").forEach(closeModal);
+        }
+    });
+
+    // ===== FIX: check tồn tại trước =====
+    const profileForm = document.getElementById("profileForm");
+    const passwordForm = document.getElementById("passwordForm");
+
+    function clearErrors(form) {
+        form.querySelectorAll(".error").forEach(e => e.innerText = "");
+    }
+
+    function showErrors(form, errors) {
+        for (let field in errors) {
+            const el = form.querySelector(`[data-error="${field}"]`);
+            if (el) el.innerText = errors[field][0];
+        }
+    }
+
+    if (profileForm) {
+        profileForm.onsubmit = async function(e) {
+            e.preventDefault();
+
+            clearErrors(this);
+
+            let formData = new FormData(this);
+
+            let res = await fetch("{% url 'accounts:update_profile' %}", {
+                method: "POST",
+                body: formData
+            });
+
+            let data = await res.json();
+
+            if (data.success) {
+                location.reload();
+            } else {
+                showErrors(this, data.errors);
+            }
+        };
+    }
+
+    if (passwordForm) {
+        passwordForm.onsubmit = async function(e) {
+            e.preventDefault();
+
+            clearErrors(this);
+
+            let formData = new FormData(this);
+
+            let res = await fetch("{% url 'accounts:change_password' %}", {
+                method: "POST",
+                body: formData
+            });
+
+            let data = await res.json();
+
+            if (data.success) {
+                alert("Đổi mật khẩu thành công");
+                closeModal(passwordModal);
+            } else {
+                showErrors(this, data.errors);
+            }
+        };
+    }
+
+});
+</script>
+
+<!-- ================= MODAL UPDATE PROFILE ================= -->
+<div class="custom-modal" id="profileModal">
+    <div class="modal-content-box modal-profile-box">
+        <div class="modal-panel-header">
+            <div>
+                <span class="modal-eyebrow">Tài khoản</span>
+                <h5 class="modal-title">Cập nhật thông tin</h5>
+                <p class="modal-subtitle">Chỉnh sửa thông tin cá nhân của bạn theo cách nhanh chóng và trực quan hơn.</p>
+            </div>
+            <button type="button" class="modal-icon-btn close-modal" aria-label="Đóng">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <form id="profileForm" enctype="multipart/form-data" class="modal-form">
+            {% csrf_token %}
+
+            <div class="modal-profile-summary">
+                <div class="modal-avatar-preview">
+                    {% if user.avatar %}
+                        <img src="{{ user.avatar.url }}" class="modal-avatar-image" alt="Avatar người dùng">
+                    {% else %}
+                        <div class="avatar-placeholder mb-0">NO IMAGE</div>
+                    {% endif %}
+                </div>
+                <div class="modal-profile-copy">
+                    <div class="modal-profile-name">{{ user.name|default:user.email }}</div>
+                    <div class="modal-profile-meta">Cập nhật họ tên, số điện thoại, địa chỉ và ảnh đại diện.</div>
+                </div>
+            </div>
+
+            <div class="modal-form-grid">
+                <div class="modal-field full-width">
+                    <label class="form-label">Họ và tên</label>
+                    <input type="text" name="name" value="{{ user.name }}" class="form-control modal-input">
+                    <div class="error" data-error="name"></div>
+                </div>
+
+                <div class="modal-field">
+                    <label class="form-label">Số điện thoại <span style="color:#e53e3e;">*</span></label>
+                    <input type="text" name="phone" value="{{ user.phone }}" class="form-control modal-input">
+                    <div class="error" data-error="phone"></div>
+                </div>
+
+                <div class="modal-field">
+                    <label class="form-label">Email <span style="color:#e53e3e;">*</span></label>
+                    <input type="email" name="email" value="{{ user.email|default:'' }}" class="form-control modal-input">
+                    <div class="error" data-error="email"></div>
+                </div>
+
+                <div class="modal-field">
+                    <label class="form-label">Ảnh đại diện</label>
+                    <input type="file" name="avatar" class="form-control modal-input">
+                </div>
+
+                <div class="modal-field">
+                    <label class="form-label">
+                        Tỉnh / Thành phố
+                    </label>
+                
+                    <select
+                        id="profileProvinceSelect"
+                        class="form-control modal-input"
+                    >
+                        <option value="">
+                            Chọn tỉnh/thành
+                        </option>
+                    </select>
+                
+                    <input
+                        type="hidden"
+                        name="province_code"
+                        id="profileProvinceCode"
+                        value="{{ user.province_code|default:'' }}"
+                    >
+                
+                    <input
+                        type="hidden"
+                        name="province_name"
+                        id="profileProvinceName"
+                        value="{{ user.province_name|default:'' }}"
+                    >
+                
+                    <div class="error" data-error="province_code"></div>
+                </div>
+                
+                <div class="modal-field">
+                    <label class="form-label">
+                        Phường / Xã
+                    </label>
+                
+                    <select
+                        id="profileWardSelect"
+                        class="form-control modal-input"
+                    >
+                        <option value="">
+                            Chọn phường/xã
+                        </option>
+                    </select>
+                
+                    <input
+                        type="hidden"
+                        name="ward_code"
+                        id="profileWardCode"
+                        value="{{ user.ward_code|default:'' }}"
+                    >
+                
+                    <input
+                        type="hidden"
+                        name="ward_name"
+                        id="profileWardName"
+                        value="{{ user.ward_name|default:'' }}"
+                    >
+                
+                    <div class="error" data-error="ward_code"></div>
+                </div>
+                
+                <div class="modal-field full-width">
+                    <label class="form-label">
+                        Địa chỉ chi tiết
+                    </label>
+                
+                    <textarea
+                        name="street_address"
+                        class="form-control modal-input modal-textarea"
+                        rows="4"
+                    >{{ user.street_address|default:'' }}</textarea>
+                
+                    <div class="error" data-error="street_address"></div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-light close-modal modal-secondary-btn">Huỷ</button>
+                <button type="submit" class="btn btn-dark modal-primary-btn">Lưu thay đổi</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- ================= MODAL CHANGE PASSWORD ================= -->
+<div class="custom-modal" id="passwordModal">
+    <div class="modal-content-box modal-password-box">
+        <div class="modal-panel-header">
+            <div>
+                <span class="modal-eyebrow">Bảo mật</span>
+                <h5 class="modal-title">Đổi mật khẩu</h5>
+                <p class="modal-subtitle">Tạo mật khẩu mới an toàn để bảo vệ tài khoản của bạn.</p>
+            </div>
+            <button type="button" class="modal-icon-btn close-modal" aria-label="Đóng">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <form id="passwordForm" class="modal-form">
+            {% csrf_token %}
+
+            <div class="modal-security-note">
+                <i class="bi bi-shield-lock"></i>
+                <span>Mật khẩu nên có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số.</span>
+            </div>
+
+            <div class="modal-field">
+                <label class="form-label">Mật khẩu cũ</label>
+                <input type="password" name="old_password" placeholder="Nhập mật khẩu hiện tại" class="form-control modal-input">
+                <div class="error" data-error="old_password"></div>
+            </div>
+
+            <div class="modal-field">
+                <label class="form-label">Mật khẩu mới</label>
+                <input type="password" name="new_password" placeholder="Nhập mật khẩu mới" class="form-control modal-input">
+                <div class="error" data-error="new_password"></div>
+            </div>
+
+            <div class="modal-field">
+                <label class="form-label">Xác nhận mật khẩu</label>
+                <input type="password" name="confirm_password" placeholder="Nhập lại mật khẩu mới" class="form-control modal-input">
+                <div class="error" data-error="__all__"></div>
+            </div>
+
+            <div class="modal-actions single-column">
+                <button type="button" class="btn btn-light close-modal modal-secondary-btn">Huỷ</button>
+                <button type="submit" class="btn btn-dark modal-primary-btn">Đổi mật khẩu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const profileProvinceSelect =
+    document.getElementById("profileProvinceSelect");
+
+const profileWardSelect =
+    document.getElementById("profileWardSelect");
+
+const profileProvinceCode =
+    document.getElementById("profileProvinceCode");
+
+const profileWardCode =
+    document.getElementById("profileWardCode");
+
+const profileProvinceName =
+    document.getElementById("profileProvinceName");
+
+const profileWardName =
+    document.getElementById("profileWardName");
+
+let profileProvinces = [];
+
+fetch('/static/orders/data/vietnam_administrative.json')
+.then(res => res.json())
+.then(data => {
+
+    profileProvinces = data;
+
+    loadProfileProvinces();
+
+    if(profileProvinceCode.value){
+
+        profileProvinceSelect.value =
+            profileProvinceCode.value;
+
+        const province =
+            profileProvinces.find(
+                p =>
+                String(p.province_code) ===
+                profileProvinceCode.value
+            );
+
+        loadProfileWards(province);
+
+        if(profileWardCode.value){
+            profileWardSelect.value =
+                profileWardCode.value;
+        }
+    }
+});
+
+function loadProfileProvinces(){
+
+profileProvinceSelect.innerHTML =
+    '<option value="">Chọn tỉnh/thành</option>';
+
+profileProvinces.forEach(province => {
+
+    const option =
+        document.createElement("option");
+
+    option.value =
+        province.province_code;
+
+    option.textContent =
+        province.name;
+
+    profileProvinceSelect.appendChild(option);
+});
+}
+
+function loadProfileWards(province){
+
+profileWardSelect.innerHTML =
+    '<option value="">Chọn phường/xã</option>';
+
+if(!province){
+    return;
+}
+
+province.wards.forEach(ward => {
+
+    const option =
+        document.createElement("option");
+
+    option.value =
+        ward.ward_code;
+
+    option.textContent =
+        ward.name;
+
+    profileWardSelect.appendChild(option);
+});
+}
+
+profileProvinceSelect.addEventListener(
+    "change",
+    function(){
+
+        profileProvinceCode.value =
+            this.value;
+
+        profileProvinceName.value =
+            this.options[
+                this.selectedIndex
+            ].text;
+
+        profileWardCode.value = "";
+        profileWardName.value = "";
+
+        const province =
+            profileProvinces.find(
+                p =>
+                String(p.province_code) ===
+                this.value
+            );
+
+        loadProfileWards(province);
+    }
+);
+
+profileWardSelect.addEventListener(
+    "change",
+    function(){
+
+        profileWardCode.value =
+            this.value;
+
+        profileWardName.value =
+            this.options[
+                this.selectedIndex
+            ].text;
+    }
+);
+</script>
+{% endblock %}

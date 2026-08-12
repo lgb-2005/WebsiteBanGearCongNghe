@@ -1,0 +1,430 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_extra_css %}
+{{ product_form.media.css }}
+{% if not product_form.uses_ckeditor5_widget %}
+<style>
+.ck-editor__editable_inline {
+    min-height: 320px;
+}
+</style>
+{% endif %}
+{% endblock %}
+
+{% block admin_topbar_actions %}
+<a href="{% url 'core:admin_products' %}" class="admin-ghost-btn">
+    <i class="bi bi-arrow-left"></i>
+    Danh sách sản phẩm
+</a>
+{% if editing_product %}
+<a href="{% url 'products:product_detail' editing_product.slug %}" class="admin-ghost-btn" target="_blank" rel="noopener noreferrer">
+    <i class="bi bi-box-arrow-up-right"></i>
+    Chi tiết
+</a>
+{% endif %}
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-panel admin-panel-wide">
+    <div class="admin-product-form-layout">
+        <div class="admin-product-form-main">
+            <form id="product-form" method="post" action="{% if editing_product %}{% url 'core:admin_product_update' editing_product.id %}{% else %}{% url 'core:admin_product_create' %}{% endif %}" class="admin-product-form" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                {% if product_form.non_field_errors %}
+                <div class="admin-form-errors">{{ product_form.non_field_errors }}</div>
+                {% endif %}
+
+                <section class="admin-form-section">
+                    <div class="admin-form-section-head">
+                        <div>
+                            <span class="admin-section-eyebrow">Thông tin cơ bản</span>
+                            <h4>Nội dung hiển thị của sản phẩm</h4>
+                        </div>
+                    </div>
+
+                    <div class="admin-form-grid">
+                        <div class="admin-form-field full-width">
+                            <label for="id_name">Tên sản phẩm</label>
+                            {{ product_form.name }}
+                            <div class="admin-field-error">{{ product_form.name.errors }}</div>
+                        </div>
+
+                        <div class="admin-form-field">
+                            <label for="id_slug">Slug</label>
+                            {{ product_form.slug }}
+                            <div class="admin-field-error">{{ product_form.slug.errors }}</div>
+                        </div>
+
+                        <div class="admin-form-field">
+                            <label>Mã sản phẩm</label>
+                            <div class="admin-static-field">{{ editing_product.product_code|default:'Sẽ tự tạo sau khi lưu' }}</div>
+                        </div>
+
+                        <div class="admin-form-field">
+                            <label for="id_category">Danh mục</label>
+                            {{ product_form.category }}
+                            <div class="admin-field-error">{{ product_form.category.errors }}</div>
+                        </div>
+
+                        <div class="admin-form-field">
+                            <label for="id_brand">Thương hiệu</label>
+                            {{ product_form.brand }}
+                            <div class="admin-field-error">{{ product_form.brand.errors }}</div>
+                        </div>
+
+                        <div class="admin-form-field full-width">
+                            <label for="id_description">Mô tả</label>
+                            {{ product_form.description.as_widget }}
+                            <div class="admin-field-error">{{ product_form.description.errors }}</div>
+                        </div>
+
+                        <div class="admin-form-field full-width">
+                            <label for="id_product_information">Thông tin chi tiết</label>
+                            {{ product_form.product_information }}
+                            <div class="admin-field-hint">Nhập mỗi dòng theo định dạng: Tên thông số: Giá trị.</div>
+                            <div class="admin-field-error">{{ product_form.product_information.errors }}</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="admin-form-section">
+                    <div class="admin-form-section-head">
+                        <div>
+                            <span class="admin-section-eyebrow">Thông tin giá</span>
+                            <h4>Thiết lập giá bán và tồn kho</h4>
+                        </div>
+                    </div>
+
+                    <div class="admin-form-grid admin-form-grid-3">
+                        <div class="admin-form-field">
+                            <label for="id_price">Giá gốc (VNĐ)</label>
+                            {{ product_form.price }}
+                            <div class="admin-field-error">{{ product_form.price.errors }}</div>
+                        </div>
+
+                        <div class="admin-form-field">
+                            <label for="id_discount_price">Giá khuyến mãi (VNĐ)</label>
+                            {{ product_form.discount_price }}
+                            <div class="admin-field-error">{{ product_form.discount_price.errors }}</div>
+                        </div>
+
+                        <div class="admin-form-field">
+                            <label for="id_stock">Tồn kho</label>
+                            {{ product_form.stock }}
+                            <div class="admin-field-error">{{ product_form.stock.errors }}</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="admin-form-section">
+                    <div class="admin-form-section-head">
+                        <div>
+                            <span class="admin-section-eyebrow">Ảnh sản phẩm</span>
+                            <h4>Preview và quản lý ảnh</h4>
+                        </div>
+                    </div>
+
+                    <div class="admin-form-grid">
+                        <div class="admin-form-field full-width">
+                            <label for="id_images">Ảnh sản phẩm</label>
+                            {{ product_form.images }}
+                            {{ product_form.deleted_images }}
+                            <div class="admin-field-hint">Bạn có thể chọn nhiều ảnh. Ảnh đầu tiên sẽ là ảnh đại diện.</div>
+                            {% if editing_product and editing_product.image_urls %}
+                            <div class="admin-image-preview-list" id="existingProductImageList">
+                                {% for image in editing_product.images.all %}
+                                <div class="admin-image-preview-item" data-existing-image-item data-image-id="{{ image.id }}">
+                                    <img src="{{ image.image.url }}" alt="{{ editing_product.name }}">
+                                    <button type="button" class="admin-table-btn delete" data-remove-existing-image data-image-id="{{ image.id }}">Xóa ảnh</button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="admin-image-preview-list" id="newProductImagePreview"></div>
+                            <div class="admin-field-error">{{ product_form.images.errors }}</div>
+                            <div class="admin-field-error">{{ product_form.deleted_images.errors }}</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="admin-form-section">
+                    <div class="admin-form-section-head">
+                        <div>
+                            <span class="admin-section-eyebrow">Thuộc tính sản phẩm</span>
+                            <h4>Tái sử dụng cấu hình AttributeGroup / AttributeValue</h4>
+                        </div>
+                        <div id="attribute-loading-indicator" style="display:none;" class="admin-field-hint">
+                            <i class="bi bi-arrow-repeat"></i> Đang tải thuộc tính...
+                        </div>
+                    </div>
+
+                    <div id="dynamic-attribute-container" class="admin-form-grid">
+                        {% include 'core/admin/_product_attribute_sections.html' with dynamic_attribute_sections=product_form.dynamic_attribute_sections %}
+                    </div>
+                </section>
+
+                <div class="admin-form-actions">
+                    <a href="{% url 'core:admin_products' %}" class="admin-ghost-btn">Quay lại danh sách</a>
+                    <button id="product-form-submit" type="submit" class="admin-primary-btn">
+                        <i class="bi bi-check2-circle"></i>
+                        {{ editing_product|yesno:"Lưu cập nhật,Tạo sản phẩm" }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if editing_product %}
+        <aside class="admin-product-form-sidebar">
+            <div class="admin-product-meta-card">
+                <span class="admin-section-eyebrow">Tóm tắt</span>
+                <h4>{{ editing_product|yesno:"Sản phẩm đang chỉnh sửa,Sản phẩm mới" }}</h4>
+                <div class="admin-product-meta-list">
+                    <div><strong>Trạng thái</strong><span>{% if editing_product and editing_product.is_active %}Đang bán{% elif editing_product %}Ngừng bán{% else %}Bản nháp chưa lưu{% endif %}</span></div>
+                    <div><strong>Mã sản phẩm</strong><span>{{ editing_product.product_code|default:'Tự sinh sau khi lưu' }}</span></div>
+                    <div><strong>Danh mục hiện tại</strong><span>{{ editing_product.category.name|default:'Chưa chọn' }}</span></div>
+                    <div><strong>Thương hiệu</strong><span>{{ editing_product.brand.name|default:'Chưa chọn' }}</span></div>
+                    <div><strong>Ngày tạo</strong><span>{% if editing_product %}{{ editing_product.created_at|date:'d/m/Y H:i' }}{% else %}Chưa tạo{% endif %}</span></div>
+                    <div><strong>Cập nhật gần nhất</strong><span>{% if editing_product %}{{ editing_product.updated_at|date:'d/m/Y H:i' }}{% else %}Chưa có{% endif %}</span></div>
+                </div>
+            </div>
+
+            <div class="admin-product-meta-card">
+                <span class="admin-section-eyebrow">Thao tác nhanh</span>
+                <h4>Điều hướng nhanh</h4>
+                <div class="admin-product-quick-actions">
+                    <a href="{% url 'products:product_detail' editing_product.slug %}" class="admin-ghost-btn" target="_blank" rel="noopener noreferrer">Xem trang sản phẩm</a>
+                    <a href="{% url 'core:admin_products' %}" class="admin-ghost-btn">Về danh sách</a>
+                </div>
+            </div>
+        </aside>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block admin_extra_js %}
+{{ product_form.media.js }}
+{% if not product_form.uses_ckeditor5_widget %}
+<script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
+{% endif %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const productForm = document.querySelector(".admin-product-form");
+    const categorySelect = document.getElementById("id_category");
+    const csrfTokenInput = productForm ? productForm.querySelector('[name=csrfmiddlewaretoken]') : null;
+    const csrfToken = csrfTokenInput ? csrfTokenInput.value : "";
+    const quickCreateUrl = '{% url "core:admin_attribute_value_quick_create" %}';
+    const attributeSectionsUrl = '{% url "core:admin_product_attribute_sections" %}';
+    const editingProductId = '{% if editing_product %}{{ editing_product.id }}{% endif %}';
+    const attributeContainer = document.getElementById("dynamic-attribute-container");
+    const loadingIndicator = document.getElementById("attribute-loading-indicator");
+    const descriptionField = document.querySelector("#id_description.ckeditor-description-field");
+    const useFallbackCkeditor = Boolean(descriptionField && descriptionField.tagName === "TEXTAREA");
+
+    if (useFallbackCkeditor && window.ClassicEditor) {
+        if (descriptionField && !descriptionField.dataset.ckeditorInitialized) {
+            window.ClassicEditor.create(descriptionField, {
+                toolbar: [
+                    'heading', '|',
+                    'bold', 'italic', 'link', '|',
+                    'bulletedList', 'numberedList', '|',
+                    'insertTable', 'blockQuote', '|',
+                    'undo', 'redo'
+                ]
+            })
+            .then((editor) => {
+                descriptionField.dataset.ckeditorInitialized = 'true';
+                window.productDescriptionEditor = editor;
+            })
+            .catch((error) => {
+                console.error('Không thể khởi tạo CKEditor fallback:', error);
+            });
+        }
+    }
+
+    if (!productForm || !categorySelect) {
+        return;
+    }
+
+    async function loadAttributeSections(categoryId) {
+        if (!attributeContainer) {
+            return;
+        }
+
+        if (loadingIndicator) {
+            loadingIndicator.style.display = "";
+        }
+
+        const params = new URLSearchParams();
+        if (categoryId) {
+            params.set("category_id", categoryId);
+        }
+        if (editingProductId) {
+            params.set("product_id", editingProductId);
+        }
+
+        try {
+            const response = await fetch(`${attributeSectionsUrl}?${params.toString()}`, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+            });
+
+            if (!response.ok) {
+                throw new Error("Không thể tải thuộc tính.");
+            }
+
+            const html = await response.text();
+            attributeContainer.innerHTML = html;
+        } catch (err) {
+            attributeContainer.innerHTML = '<div class="admin-empty-inline-state"><i class="bi bi-exclamation-circle"></i><div><strong>Lỗi tải thuộc tính</strong><span>' + err.message + '</span></div></div>';
+        } finally {
+            if (loadingIndicator) {
+                loadingIndicator.style.display = "none";
+            }
+        }
+    }
+
+    categorySelect.addEventListener("change", function () {
+        loadAttributeSections(categorySelect.value);
+    });
+
+    function updateFeedback(feedbackElement, message, isError) {
+        if (!feedbackElement) {
+            return;
+        }
+
+        feedbackElement.textContent = message || "";
+        feedbackElement.style.color = isError ? "#dc2626" : "#16a34a";
+    }
+
+    function appendCheckboxOption(container, fieldName, attributeValue) {
+        const wrapper = document.createElement("label");
+        wrapper.style.display = "flex";
+        wrapper.style.alignItems = "center";
+        wrapper.style.gap = "8px";
+        wrapper.style.marginBottom = "8px";
+
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.name = fieldName;
+        input.value = String(attributeValue.id);
+        input.checked = true;
+
+        const text = document.createElement("span");
+        text.textContent = attributeValue.value;
+
+        wrapper.appendChild(input);
+        wrapper.appendChild(text);
+        container.appendChild(wrapper);
+    }
+
+    function appendSelectOption(selectElement, attributeValue) {
+        const existingOption = Array.from(selectElement.options).find((option) => option.value === String(attributeValue.id));
+        if (existingOption) {
+            existingOption.selected = true;
+            return;
+        }
+
+        const option = document.createElement("option");
+        option.value = String(attributeValue.id);
+        option.textContent = attributeValue.value;
+        option.selected = true;
+        selectElement.appendChild(option);
+    }
+
+    async function quickCreateAttributeValue(sectionElement) {
+        const groupId = sectionElement.getAttribute("data-group-id");
+        const fieldName = sectionElement.getAttribute("data-field-name");
+        const customInput = sectionElement.querySelector("input[type='text']");
+        const feedbackElement = sectionElement.querySelector("[data-attribute-create-feedback]");
+        const createButton = sectionElement.querySelector("[data-attribute-create-button]");
+        const optionsFieldContainer = sectionElement.querySelector("[data-attribute-options-field]");
+
+        if (!groupId || !fieldName || !customInput || !createButton || !optionsFieldContainer) {
+            return;
+        }
+
+        const rawValue = customInput.value.trim();
+        if (!rawValue) {
+            updateFeedback(feedbackElement, "Vui lòng nhập giá trị mới trước khi thêm.", true);
+            customInput.focus();
+            return;
+        }
+
+        createButton.disabled = true;
+        updateFeedback(feedbackElement, "Đang thêm giá trị mới...", false);
+
+        const body = new URLSearchParams();
+        body.append("group_id", groupId);
+        body.append("value", rawValue);
+
+        try {
+            const response = await fetch(quickCreateUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": csrfToken,
+                },
+                body: body.toString(),
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || "Không thể thêm giá trị mới.");
+            }
+
+            const selectElement = optionsFieldContainer.querySelector("select");
+            if (selectElement) {
+                appendSelectOption(selectElement, data.attribute_value);
+            } else {
+                const checkboxContainer = optionsFieldContainer.querySelector("div") || optionsFieldContainer;
+                appendCheckboxOption(checkboxContainer, fieldName, data.attribute_value);
+            }
+
+            customInput.value = "";
+            updateFeedback(
+                feedbackElement,
+                data.created ? `Đã thêm "${data.attribute_value.value}" và tự chọn.` : `Giá trị "${data.attribute_value.value}" đã tồn tại và đã được chọn.`,
+                false
+            );
+        } catch (error) {
+            updateFeedback(feedbackElement, error.message, true);
+        } finally {
+            createButton.disabled = false;
+        }
+    }
+
+    productForm.addEventListener("click", function (event) {
+        const createButton = event.target.closest("[data-attribute-create-button]");
+        if (!createButton) {
+            return;
+        }
+
+        const sectionElement = createButton.closest("[data-dynamic-attribute-section]");
+        if (!sectionElement) {
+            return;
+        }
+
+        quickCreateAttributeValue(sectionElement);
+    });
+
+    productForm.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter") {
+            return;
+        }
+
+        const customInput = event.target.closest("[data-dynamic-attribute-section] input[type='text']");
+        if (!customInput) {
+            return;
+        }
+
+        event.preventDefault();
+        const sectionElement = customInput.closest("[data-dynamic-attribute-section]");
+        if (sectionElement) {
+            quickCreateAttributeValue(sectionElement);
+        }
+    });
+});
+</script>
+{% endblock %}

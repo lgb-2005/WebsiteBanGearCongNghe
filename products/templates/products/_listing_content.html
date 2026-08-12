@@ -1,0 +1,320 @@
+{% load static %}
+<section class="category-products-page{% if page_modifier_class %} {{ page_modifier_class }}{% endif %}">
+    <div class="container category-products-shell">
+        <div class="category-products-breadcrumb">
+            <a href="{% url 'core:home' %}">Trang chủ</a>
+            <span>/</span>
+            <strong>{{ breadcrumb_title }}</strong>
+        </div>
+
+        {% if show_filters %}
+            <div class="category-products-filterbar">
+                <div class="category-filterbar-left">
+                    <button type="button" class="filterbar-btn filterbar-main-btn" id="openFilterPopup">
+                        <i class="bi bi-funnel"></i> Bộ lọc
+                    </button>
+                    <div class="filterbar-dropdown">
+                        <button class="filterbar-btn filterbar-dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Giá <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <div class="filterbar-dropdown-menu dropdown-menu filterbar-price-dropdown">
+                            <div class="price-inputs">
+                                <div class="price-input-group">
+                                    <label for="priceMinInput">Từ</label>
+                                    <input
+                                        type="text"
+                                        id="priceMinInput"
+                                        class="form-control"
+                                        value="{{ price_min|default:0 }}"
+                                    >
+                                </div>
+
+                                <div class="price-input-group">
+                                    <label for="priceMaxInput">Đến</label>
+                                    <input
+                                        type="text"
+                                        id="priceMaxInput"
+                                        class="form-control"
+                                        value="{{ price_max|default:10000000 }}"
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="filterbar-price-slider">
+                                <div class="slider-track"></div>
+
+                                <input
+                                    type="range"
+                                    id="priceMinSlider"
+                                    min="0"
+                                    max="10000000"
+                                    step="100000"
+                                    value="{{ price_min|default:0 }}"
+                                >
+
+                                <input
+                                    type="range"
+                                    id="priceMaxSlider"
+                                    min="0"
+                                    max="10000000"
+                                    step="100000"
+                                    value="{{ price_max|default:10000000 }}"
+                                >
+
+                                <div class="price-range-display">
+                                    <span id="priceMinDisplay">
+                                        {{ price_min|default:0 }}đ
+                                    </span>
+
+                                    -
+
+                                    <span id="priceMaxDisplay">
+                                        {{ price_max|default:10000000 }}đ
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="filterbar-dropdown-actions">
+                                <button
+                                    type="button"
+                                    class="filterbar-btn filterbar-reset-btn filterbar-action-reset"
+                                    data-group="price"
+                                >
+                                    Bỏ chọn
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="filterbar-btn filterbar-apply-btn filterbar-action-apply"
+                                    data-group="price"
+                                >
+                                    Xem kết quả
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% if brand_options %}
+                        <div class="filterbar-dropdown">
+                            <button class="filterbar-btn filterbar-dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                Thương hiệu <i class="bi bi-chevron-down"></i>
+                            </button>
+                            <div class="filterbar-dropdown-menu dropdown-menu">
+                                {% for brand in brand_options %}
+                                    <button class="filterbar-dropdown-item dropdown-item {% if brand.id in selected_brands %}selected{% endif %}" data-brand="true" data-value="{{ brand.id }}">
+                                        {{ brand.name }}
+                                    </button>
+                                {% endfor %}
+                                <div class="filterbar-dropdown-actions">
+                                    <button type="button" class="filterbar-btn filterbar-reset-btn filterbar-action-reset" data-group="brand">Bỏ chọn</button>
+                                    <button type="button" class="filterbar-btn filterbar-apply-btn filterbar-action-apply" data-group="brand">Xem kết quả</button>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% for option in filter_group_options %}
+                        <div class="filterbar-dropdown">
+                            <button class="filterbar-btn filterbar-dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                {{ option.group.name }} <i class="bi bi-chevron-down"></i>
+                            </button>
+                            <div class="filterbar-dropdown-menu dropdown-menu">
+                                {% for value in option.values %}
+                                    <button class="filterbar-dropdown-item dropdown-item {% if value.slug in option.selected_values %}selected{% endif %}" data-group="{{ option.group.slug }}" data-value="{{ value.slug }}">
+                                        {{ value.value }}
+                                    </button>
+                                {% endfor %}
+                                <div class="filterbar-dropdown-actions">
+                                    <button type="button" class="filterbar-btn filterbar-reset-btn filterbar-action-reset" data-group="{{ option.group.slug }}">Bỏ chọn</button>
+                                    <button type="button" class="filterbar-btn filterbar-apply-btn filterbar-action-apply" data-group="{{ option.group.slug }}">Xem kết quả</button>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="category-filterbar-right">
+                    <div class="filterbar-sort-dropdown">
+                        <button class="filterbar-btn filterbar-dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-sort-alpha-down"></i> Xếp theo:
+                            <span class="filterbar-sort-label">{{ sort_label|default:'Tên từ A-Z' }}</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <div class="filterbar-dropdown-menu dropdown-menu filterbar-sort-menu">
+                            <button class="filterbar-dropdown-item dropdown-item" data-sort="name-asc">Tên từ A-Z</button>
+                            <button class="filterbar-dropdown-item dropdown-item" data-sort="name-desc">Tên từ Z-A</button>
+                            <button class="filterbar-dropdown-item dropdown-item" data-sort="price-asc">Giá tăng dần</button>
+                            <button class="filterbar-dropdown-item dropdown-item" data-sort="price-desc">Giá giảm dần</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="category-filter-popup" id="categoryFilterPopup" style="display:none">
+                <div class="category-filter-popup-content">
+                    <div class="category-filter-popup-header">
+                        <h2>Bộ lọc sản phẩm</h2>
+                        <button type="button" class="filterbar-btn filterbar-close-btn" id="closeFilterPopup">
+                            <i class="bi bi-x"></i> Đóng
+                        </button>
+                    </div>
+                    <div class="category-filter-popup-body">
+                        <div class="category-filter-popup-section">
+                            <h3>Khoảng giá</h3>
+                            <div class="popup-price-slider-wrap">
+                                <div class="popup-slider-track"></div>
+
+                                <input
+                                    type="range"
+                                    id="popupPriceMinSlider"
+                                    min="0"
+                                    max="10000000"
+                                    step="100000"
+                                    value="{{ price_min|default:0 }}"
+                                    class="popup-price-slider"
+                                >
+
+                                <input
+                                    type="range"
+                                    id="popupPriceMaxSlider"
+                                    min="0"
+                                    max="10000000"
+                                    step="100000"
+                                    value="{{ price_max|default:10000000 }}"
+                                    class="popup-price-slider"
+                                >
+                            </div>
+
+                            <div class="popup-price-display">
+                                <span id="popupPriceMinDisplay">
+                                    {{ price_min|default:0 }}đ
+                                </span>
+
+                                <span>-</span>
+
+                                <span id="popupPriceMaxDisplay">
+                                    {{ price_max|default:10000000 }}đ
+                                </span>
+                            </div>
+                        </div>
+                        {% for option in filter_group_options %}
+                            <div class="category-filter-popup-section">
+                                <h3>{{ option.group.name }}</h3>
+                                <div class="category-filter-popup-values">
+                                    {% for value in option.values %}
+                                        <button class="filter-popup-value-btn {% if value.slug in option.selected_values %}active{% endif %}" data-group="{{ option.group.slug }}" data-value="{{ value.slug }}">
+                                            {{ value.value }}
+                                        </button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="category-filter-popup-footer">
+                        <button class="filterbar-btn filterbar-reset-btn" id="resetFilters">Bỏ chọn</button>
+                        <button class="filterbar-btn filterbar-apply-btn" id="applyFilters">Xem kết quả</button>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="category-products-layout">
+            <div class="category-products-main">
+                <div class="category-products-toolbar">
+                    <span>{{ products_count }} sản phẩm</span>
+                    {% if search_query %}
+                        <span>Từ khóa: "{{ search_query }}"</span>
+                    {% elif active_attribute_filters %}
+                        <span>Đang lọc theo {{ active_attribute_filters|length }} nhóm thuộc tính</span>
+                    {% else %}
+                        <span>{{ toolbar_description }}</span>
+                    {% endif %}
+                </div>
+
+                {% if products %}
+                    <div class="category-products-grid">
+                        {% for product in products %}
+                            <a href="{% url 'products:product_detail' product.slug %}" class="category-product-card text-decoration-none">
+                                {% if product.discount_percent %}
+                                    <span class="category-product-discount">-{{ product.discount_percent }}%</span>
+                                {% endif %}
+                                <div class="category-product-thumb-wrap">
+                                    {% if product.image_url %}
+                                        <img src="{{ product.image_url }}" alt="{{ product.name }}" class="category-product-thumb">
+                                    {% else %}
+                                        <img src="{% static 'images/banner1.jpg' %}" alt="{{ product.name }}" class="category-product-thumb">
+                                    {% endif %}
+                                </div>
+                                <div class="category-product-card-body">
+                                    <span class="category-product-brand">{{ product.brand_name|default:'TechGear' }}</span>
+                                    <h3 class="category-product-title">{{ product.name }}</h3>
+                                    <div class="category-product-price-row">
+                                        <span class="category-product-price">{{ product.price }}</span>
+                                        {% if product.old_price %}
+                                            <span class="category-product-old-price">{{ product.old_price }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="category-product-stock {% if product.stock > 0 %}is-in-stock{% else %}is-out-of-stock{% endif %}">
+                                        {% if product.stock > 0 %}Còn hàng{% else %}Hết hàng{% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+
+                    {% if is_paginated %}
+                    <div class="pagination">
+                        <div class="pagination-nav">
+                            {% if page_obj.has_previous %}
+                                <a class="pagination-link pagination-arrow" href="?page={{ page_obj.previous_page_number }}{% if query_params %}&{{ query_params }}{% endif %}" aria-label="Trang trước">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            {% else %}
+                                <span class="pagination-link pagination-arrow disabled" aria-label="Trang trước">
+                                    <i class="bi bi-chevron-left"></i>
+                                </span>
+                            {% endif %}
+
+                            {% for num in page_numbers %}
+                                {% if num is None %}
+                                    <span class="pagination-ellipsis">...</span>
+                                {% elif num == page_obj.number %}
+                                    <span class="pagination-link current">{{ num }}</span>
+                                {% else %}
+                                    <a class="pagination-link" href="?page={{ num }}{% if query_params %}&{{ query_params }}{% endif %}">{{ num }}</a>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <a class="pagination-link pagination-arrow" href="?page={{ page_obj.next_page_number }}{% if query_params %}&{{ query_params }}{% endif %}" aria-label="Trang sau">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            {% else %}
+                                <span class="pagination-link pagination-arrow disabled" aria-label="Trang sau">
+                                    <i class="bi bi-chevron-right"></i>
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <form class="pagination-goto" method="get" action="">
+                            {% for key, value in request.GET.items %}
+                                {% if key != 'page' %}
+                                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                {% endif %}
+                            {% endfor %}
+                            <span class="pagination-label">Trang</span>
+                            <input type="number" name="page" min="1" max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}" class="pagination-input" aria-label="Số trang">
+                            <span class="pagination-total">/ {{ page_obj.paginator.num_pages }}</span>
+                            <button type="submit" class="pagination-btn">Đến</button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                {% else %}
+                    <div class="category-products-empty-state{% if empty_state_modifier_class %} {{ empty_state_modifier_class }}{% endif %}">
+                        <i class="bi bi-inbox"></i>
+                        <h2>{{ empty_title }}</h2>
+                        <p>{{ empty_message }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>

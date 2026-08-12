@@ -1,0 +1,153 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_topbar_actions %}
+{% if editing_brand %}
+    <a href="{% url 'core:admin_brands' %}" class="admin-ghost-btn">
+        <i class="bi bi-arrow-counterclockwise"></i>
+        Tạo mới thương hiệu
+    </a>
+{% endif %}
+<a href="#brand-form" class="admin-primary-btn">
+    <i class="bi bi-tags"></i>
+    {{ editing_brand|yesno:"Cập nhật thương hiệu,Thêm thương hiệu" }}
+</a>
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-panel admin-panel-large">
+    <div class="admin-products-layout admin-brands-layout">
+        <div class="admin-product-form-card" id="brand-form">
+            <div class="admin-product-form-head">
+                <div>
+                    <span class="admin-section-eyebrow">Biểu mẫu thương hiệu</span>
+                    <h4>{{ editing_brand|yesno:"Cập nhật thương hiệu,Tạo thương hiệu mới" }}</h4>
+                </div>
+                {% if editing_brand %}
+                    <a href="{% url 'core:admin_brands' %}" class="admin-form-cancel">Hủy chỉnh sửa</a>
+                {% endif %}
+            </div>
+
+            {% if delete_blocked %}
+                <div class="admin-form-errors">Không thể xóa thương hiệu đang có sản phẩm liên kết.</div>
+            {% endif %}
+
+            <form method="post" action="{% if editing_brand %}{% url 'core:admin_brand_update' editing_brand.id %}{% else %}{% url 'core:admin_brand_create' %}{% endif %}" class="admin-product-form">
+                {% csrf_token %}
+
+                {% if brand_form.non_field_errors %}
+                    <div class="admin-form-errors">{{ brand_form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="admin-form-grid admin-brand-form-grid">
+                    <div class="admin-form-field full-width">
+                        <label for="id_name">Tên thương hiệu</label>
+                        {{ brand_form.name }}
+                        <div class="admin-field-error">{{ brand_form.name.errors }}</div>
+                    </div>
+                </div>
+
+                <div class="admin-form-actions">
+                    <button type="submit" class="admin-primary-btn">
+                        <i class="bi bi-check2-circle"></i>
+                        {{ editing_brand|yesno:"Lưu cập nhật,Tạo thương hiệu" }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="admin-product-list-card">
+            <div class="admin-product-list-head">
+                <div>
+                    <span class="admin-section-eyebrow">Danh sách thương hiệu</span>
+                    <h4>Thương hiệu hiện có</h4>
+                </div>
+                <span class="admin-list-count">{{ brands_total }} thương hiệu</span>
+            </div>
+
+            <form method="get" class="admin-search-bar">
+                <div class="admin-form-field">
+                    <label for="brands-search-input">Tìm kiếm thương hiệu</label>
+                    <input id="brands-search-input" type="text" name="q" value="{{ brands_search_query }}" class="admin-form-control" placeholder="Nhập tên thương hiệu">
+                </div>
+                <button type="submit" class="admin-primary-btn">Tìm kiếm</button>
+                <a href="{% url 'core:admin_brands' %}" class="admin-ghost-btn">Xóa lọc</a>
+            </form>
+
+            <div class="admin-product-table-wrap">
+                <table class="admin-product-table admin-brand-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên thương hiệu</th>
+                            <th>Số sản phẩm</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for brand in brands %}
+                            <tr>
+                                <td>{{ brand.id }}</td>
+                                <td>
+                                    <div class="admin-product-name-cell">
+                                        <strong>{{ brand.name }}</strong>
+                                        <span>{{ brand.product_count }} sản phẩm liên kết</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge info">{{ brand.product_count }}</span>
+                                </td>
+                                <td>
+                                    <div class="admin-table-actions">
+                                        <a href="{% url 'core:admin_brands' %}?edit_brand={{ brand.id }}{{ brands_edit_query_string }}#brand-form" class="admin-table-btn edit">Sửa</a>
+                                        {% if brand.product_count > 0 %}
+                                            <button type="button" class="admin-table-btn delete" disabled title="Không thể xóa thương hiệu đang có sản phẩm liên kết.">Xóa</button>
+                                        {% else %}
+                                            <form method="post" action="{% url 'core:admin_brand_delete' brand.id %}" onsubmit="return confirm('Bạn có chắc muốn xóa thương hiệu này?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="admin-table-btn delete">Xóa</button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4">
+                                    <div class="admin-empty-state">
+                                        <i class="bi bi-tags"></i>
+                                        <strong>Chưa có thương hiệu nào</strong>
+                                        <span>Hãy tạo thương hiệu đầu tiên để gán vào sản phẩm.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if brands_page.paginator.num_pages > 1 %}
+                <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; padding-top: 16px; flex-wrap: wrap;">
+                    <span class="admin-field-hint">Trang {{ brands_page.number }} / {{ brands_page.paginator.num_pages }}</span>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        {% if brands_page.has_previous %}
+                            <a href="?page={{ brands_page.previous_page_number }}{{ brands_query_string }}" class="admin-ghost-btn">Trước</a>
+                        {% endif %}
+
+                        {% for page_number in brands_page.paginator.page_range %}
+                            {% if page_number == brands_page.number %}
+                                <span class="admin-primary-btn" style="pointer-events: none;">{{ page_number }}</span>
+                            {% elif page_number >= brands_page.number|add:'-2' and page_number <= brands_page.number|add:'2' %}
+                                <a href="?page={{ page_number }}{{ brands_query_string }}" class="admin-ghost-btn">{{ page_number }}</a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if brands_page.has_next %}
+                            <a href="?page={{ brands_page.next_page_number }}{{ brands_query_string }}" class="admin-ghost-btn">Sau</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

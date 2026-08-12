@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Xóa thương hiệu{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card bg-dark border-secondary shadow-sm">
+                <div class="card-body p-4">
+                    <h1 class="h3 text-light mb-3">Xóa thương hiệu</h1>
+                    <p class="text-secondary mb-4">Bạn có chắc muốn xóa thương hiệu <strong class="text-light">{{ object.name }}</strong> không?</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'products:brand_list' %}" class="btn btn-outline-light">Hủy</a>
+                            <button type="submit" class="btn btn-danger">Xóa</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

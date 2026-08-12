@@ -1,0 +1,175 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_topbar_actions %}
+<a href="{% url 'core:admin_product_create' %}" class="admin-primary-btn">
+    <i class="bi bi-plus-lg"></i>
+    Thêm sản phẩm
+</a>
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-panel admin-panel-wide">
+    <div class="admin-panel-header">
+        <div>
+            <h3>Danh sách sản phẩm</h3>
+            <p>Quản lý sản phẩm theo phong cách TMĐT: tìm kiếm, lọc, phân trang và thao tác nhanh ngay trên từng dòng.</p>
+        </div>
+        <div class="admin-products-summary">
+            <span class="admin-list-count">{{ products_total }} sản phẩm</span>
+        </div>
+    </div>
+
+    <form method="get" class="admin-products-filters">
+        <div class="admin-products-search-row">
+            <div class="admin-form-field full-width">
+                <label for="products-search-input">Tìm kiếm sản phẩm</label>
+                <input id="products-search-input" type="text" name="search" value="{{ products_search_query }}" class="admin-form-control" placeholder="Tìm theo mã sản phẩm hoặc tên sản phẩm">
+            </div>
+        </div>
+
+        <div class="admin-products-filter-row">
+            <div class="admin-form-field">
+                <label for="products-category-filter">Danh mục</label>
+                <select id="products-category-filter" name="category_id" class="admin-form-control">
+                    <option value="">Tất cả danh mục</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if products_category_filter == category.id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="admin-form-field">
+                <label for="products-status-filter">Trạng thái</label>
+                <select id="products-status-filter" name="status" class="admin-form-control">
+                    <option value="">Tất cả</option>
+                    <option value="active" {% if products_status_filter == 'active' %}selected{% endif %}>Đang bán</option>
+                    <option value="inactive" {% if products_status_filter == 'inactive' %}selected{% endif %}>Ngừng bán</option>
+                </select>
+            </div>
+
+            <div class="admin-products-filter-actions">
+                <button type="submit" class="admin-primary-btn">Áp dụng</button>
+                <a href="{% url 'core:admin_products' %}" class="admin-ghost-btn">Xóa lọc</a>
+            </div>
+        </div>
+    </form>
+
+    <div class="admin-product-table-wrap">
+        <table class="admin-product-table admin-product-management-table">
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Ảnh</th>
+                    <th>Mã sản phẩm</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Danh mục</th>
+                    <th>Thương hiệu</th>
+                    <th>Giá</th>
+                    <th>Tồn kho</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày tạo</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>{{ product.index }}</td>
+                    <td>
+                        {% if product.image_url %}
+                        <img src="{{ product.image_url }}" alt="{{ product.name }}" class="admin-table-thumb">
+                        {% else %}
+                        <div class="admin-table-thumb-placeholder">
+                            <i class="bi bi-image"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="status-badge neutral" style="font-family: monospace; letter-spacing: .04em;">{{ product.product_code }}</span>
+                    </td>
+                    <td>
+                        <div class="admin-product-listing-name" style="max-width:220px;white-space:normal;word-break:break-word;">
+                            <strong>{{ product.name }}</strong>
+                            <span>{{ product.slug }}</span>
+                        </div>
+                    </td>
+                    <td>{{ product.category_name }}</td>
+                    <td>{{ product.brand_name }}</td>
+                    <td>
+                        <div class="admin-price-cell">
+                            <strong>{{ product.price }}</strong>
+                            {% if product.original_price %}
+                            <span>{{ product.original_price }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge {% if product.stock <= 10 %}warning{% else %}success{% endif %}">
+                            {{ product.stock }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if product.is_active %}
+                        <span class="status-badge success">Đang bán</span>
+                        {% else %}
+                        <span class="status-badge danger">Ngừng bán</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ product.created_at }}</td>
+                    <td>
+                        <div class="admin-table-actions">
+                            <a href="{% url 'core:admin_product_edit' product.id %}" class="admin-table-btn edit">Chỉnh sửa</a>
+
+                            {% if product.is_active %}
+                            <form method="post" action="{% url 'core:admin_product_delete' product.id %}" onsubmit="return confirm('Bạn có chắc muốn ẩn sản phẩm này?');">
+                                {% csrf_token %}
+                                <button type="submit" class="admin-table-btn delete">Ẩn</button>
+                            </form>
+                            {% else %}
+                            <form method="post" action="{% url 'core:admin_product_restore' product.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="admin-table-btn restore">Khôi phục</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11">
+                        <div class="admin-empty-state">
+                            <i class="bi bi-inbox"></i>
+                            <strong>Không tìm thấy sản phẩm phù hợp</strong>
+                            <span>Hãy thử đổi từ khóa tìm kiếm hoặc bộ lọc.</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if products_page.paginator.num_pages > 1 %}
+    <div class="admin-page-pagination">
+        <span class="admin-field-hint">Trang {{ products_page.number }} / {{ products_page.paginator.num_pages }}</span>
+        <div class="admin-page-pagination-actions">
+            {% if products_page.has_previous %}
+            <a href="?page={{ products_page.previous_page_number }}{{ products_query_string }}" class="admin-ghost-btn">Trước</a>
+            {% endif %}
+
+            {% for page_number in products_page.paginator.page_range %}
+                {% if page_number == products_page.number %}
+                <span class="admin-primary-btn" style="pointer-events:none;">{{ page_number }}</span>
+                {% elif page_number >= products_page.number|add:'-2' and page_number <= products_page.number|add:'2' %}
+                <a href="?page={{ page_number }}{{ products_query_string }}" class="admin-ghost-btn">{{ page_number }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if products_page.has_next %}
+            <a href="?page={{ products_page.next_page_number }}{{ products_query_string }}" class="admin-ghost-btn">Sau</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

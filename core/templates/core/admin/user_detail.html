@@ -1,0 +1,319 @@
+{% extends 'core/admin/base.html' %}
+{% load core_filters %}
+
+{% block admin_topbar_actions %}
+<a href="{% url 'core:admin_users' %}" class="admin-ghost-btn">
+    <i class="bi bi-arrow-left"></i>
+    Quay lại danh sách
+</a>
+{% endblock %}
+
+{% block admin_content %}
+{% if status_updated %}
+<div class="admin-alert success">
+    <i class="bi bi-check-circle"></i>
+    <span>Cập nhật trạng thái tài khoản thành công.</span>
+</div>
+{% endif %}
+
+<div class="admin-orders-detail-layout">
+
+    <section class="admin-panel admin-panel-wide">
+        <div class="admin-panel-header">
+            <div style="display:flex;align-items:center;gap:16px;">
+                {% if target_user.avatar %}
+                    <img src="{{ target_user.avatar.url }}" alt="{{ target_user.name }}"
+                         style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                {% else %}
+                    <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#ff8a00,#ff5a1f);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:24px;flex-shrink:0;">
+                        {{ target_user.name|first|upper }}
+                    </div>
+                {% endif %}
+                <div>
+                    <span class="admin-section-eyebrow">Tài khoản người dùng</span>
+                    <h3>{{ target_user.name }}</h3>
+                    <p>{{ target_user.email }}</p>
+                </div>
+            </div>
+            <div class="admin-order-detail-badges" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                {% if target_user.is_staff or target_user.is_superuser %}
+                    <span class="status-badge info">Admin</span>
+                {% else %}
+                    <span class="status-badge neutral">User</span>
+                {% endif %}
+                {% if target_user.is_active %}
+                    <span class="status-badge success">Đang hoạt động</span>
+                {% else %}
+                    <span class="status-badge danger">Đã khóa</span>
+                {% endif %}
+                <button type="button" class="admin-ghost-btn" id="btnOpenEditUser" style="font-size:13px;padding:6px 14px;">
+                    <i class="bi bi-pencil"></i> Chỉnh sửa
+                </button>
+                <button type="button" class="admin-ghost-btn" id="btnOpenChangePassword" style="font-size:13px;padding:6px 14px;">
+                    <i class="bi bi-key"></i> Đổi mật khẩu
+                </button>
+            </div>
+        </div>
+
+        <div class="admin-order-detail-grid">
+            <article class="admin-order-info-card">
+                <span class="admin-section-eyebrow">Thông tin cá nhân</span>
+                <div class="admin-order-info-list">
+                    <div><strong>Họ tên</strong><span>{{ target_user.name }}</span></div>
+                    <div><strong>Email</strong><span>{{ target_user.email }}</span></div>
+                    <div><strong>Số điện thoại</strong><span>{{ target_user.phone|default:"Chưa cập nhật" }}</span></div>
+                    <div><strong>Địa chỉ</strong><span>{{ target_user.full_address|default:"Chưa cập nhật" }}</span></div>
+                    <div><strong>Ngày tham gia</strong><span>{{ target_user.date_joined|date:"d/m/Y H:i" }}</span></div>
+                    <div><strong>Lần đăng nhập cuối</strong>
+                        <span>{% if target_user.last_login_at %}{{ target_user.last_login_at|date:"d/m/Y H:i" }}{% else %}Chưa đăng nhập{% endif %}</span>
+                    </div>
+                </div>
+            </article>
+
+            <article class="admin-order-info-card">
+                <span class="admin-section-eyebrow">Thống kê mua hàng</span>
+                <div class="admin-order-info-list">
+                    <div><strong>Tổng đơn hàng</strong><span>{{ order_stats.total_orders|default:0 }}</span></div>
+                    <div><strong>Tổng tiền đã mua</strong>
+                        <span>{% if order_stats.total_spent %}{{ order_stats.total_spent|vnd }}{% else %}—{% endif %}</span>
+                    </div>
+                    <div><strong>Đơn hoàn thành</strong><span>{{ order_stats.completed|default:0 }}</span></div>
+                    <div><strong>Đơn đã hủy</strong><span>{{ order_stats.cancelled|default:0 }}</span></div>
+                    <div><strong>Đơn đang xử lý</strong><span>{{ order_stats.processing|default:0 }}</span></div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="admin-panel">
+        <div class="admin-panel-header compact">
+            <div>
+                <h3>{% if target_user.is_active %}Khóa tài khoản{% else %}Mở khóa tài khoản{% endif %}</h3>
+                <p>
+                    {% if target_user.is_active %}
+                        Sau khi khóa, người dùng sẽ không thể đăng nhập vào hệ thống.
+                    {% else %}
+                        Sau khi mở khóa, người dùng sẽ có thể đăng nhập trở lại.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <form method="post"
+              action="{% url 'core:admin_user_toggle_status' target_user.id %}"
+              onsubmit="return confirm('{% if target_user.is_active %}Bạn có chắc muốn khóa tài khoản này?{% else %}Bạn có chắc muốn mở khóa tài khoản này?{% endif %}');">
+            {% csrf_token %}
+            {% if target_user.is_active %}
+                <button type="submit" class="admin-ghost-btn" style="color:#ef4444;border-color:#ef4444;">
+                    <i class="bi bi-lock"></i>
+                    Khóa tài khoản
+                </button>
+            {% else %}
+                <button type="submit" class="admin-primary-btn">
+                    <i class="bi bi-unlock"></i>
+                    Mở khóa tài khoản
+                </button>
+            {% endif %}
+        </form>
+    </section>
+
+    <section class="admin-panel admin-panel-wide">
+        <div class="admin-panel-header">
+            <div>
+                <h3>Đơn hàng gần đây</h3>
+                <p>5 đơn hàng mới nhất của người dùng này.</p>
+            </div>
+        </div>
+
+        {% if recent_orders %}
+        <div class="admin-product-table-wrap">
+            <table class="admin-product-table admin-orders-table">
+                <thead>
+                    <tr>
+                        <th>Mã đơn hàng</th>
+                        <th>Ngày đặt</th>
+                        <th>Giá trị</th>
+                        <th>Trạng thái</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in recent_orders %}
+                    <tr>
+                        <td><strong>{{ order.order_code }}</strong></td>
+                        <td>{{ order.created_at }}</td>
+                        <td><strong>{{ order.total_price }}</strong></td>
+                        <td><span class="status-badge {{ order.status_badge }}">{{ order.status_label }}</span></td>
+                        <td>
+                            <div class="admin-table-actions">
+                                <a href="{% url 'core:admin_order_detail' order.id %}" class="admin-table-btn edit">Xem chi tiết</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="admin-empty-card">Người dùng này chưa có đơn hàng nào.</div>
+        {% endif %}
+    </section>
+
+</div>
+
+<!-- ===== MODAL: CHỈNH Sửa THÔNG TIN ===== -->
+<div id="adminEditUserModal" style="display:none;position:fixed;inset:0;z-index:1050;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:20px;padding:32px;width:100%;max-width:480px;box-shadow:0 8px 40px rgba(0,0,0,.18);position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+            <div>
+                <span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#ff8a00;text-transform:uppercase;">Người dùng</span>
+                <h4 style="margin:4px 0 4px;font-size:18px;font-weight:700;color:#111827;">Chỉnh sửa thông tin</h4>
+                <p style="margin:0;font-size:13px;color:#6b7280;">Cập nhật họ tên, số điện thoại và ảnh đại diện cho người dùng này.</p>
+            </div>
+            <button type="button" id="btnCloseEditUser" style="background:none;border:none;cursor:pointer;font-size:18px;color:#6b7280;line-height:1;padding:4px;">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <form id="adminEditUserForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div style="margin-bottom:16px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Họ và tên <span style="color:#ef4444;">*</span></label>
+                <input type="text" name="name" id="editUserName" value="{{ target_user.name }}"
+                       class="admin-form-control" placeholder="Nhập họ tên">
+                <div id="editUserNameError" style="font-size:12px;color:#ef4444;margin-top:4px;"></div>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Số điện thoại</label>
+                <input type="text" name="phone" id="editUserPhone" value="{{ target_user.phone|default:'' }}"
+                       class="admin-form-control" placeholder="Nhập số điện thoại">
+                <div id="editUserPhoneError" style="font-size:12px;color:#ef4444;margin-top:4px;"></div>
+            </div>
+            <div style="margin-bottom:24px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Ảnh đại diện</label>
+                <input type="file" name="avatar" accept="image/*" class="admin-form-control">
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" id="btnCloseEditUser2" class="admin-ghost-btn">Hủy</button>
+                <button type="submit" class="admin-primary-btn" id="btnSubmitEditUser">
+                    <i class="bi bi-check-lg"></i> Lưu thay đổi
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== MODAL: ĐỔI MẬT KHẨU ===== -->
+<div id="adminChangePasswordModal" style="display:none;position:fixed;inset:0;z-index:1050;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:20px;padding:32px;width:100%;max-width:420px;box-shadow:0 8px 40px rgba(0,0,0,.18);position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+            <div>
+                <span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#ff8a00;text-transform:uppercase;">Bảo mật</span>
+                <h4 style="margin:4px 0 4px;font-size:18px;font-weight:700;color:#111827;">Đổi mật khẩu</h4>
+                <p style="margin:0;font-size:13px;color:#6b7280;">Thiết lập mật khẩu mới cho tài khoản này.</p>
+            </div>
+            <button type="button" id="btnCloseChangePw" style="background:none;border:none;cursor:pointer;font-size:18px;color:#6b7280;line-height:1;padding:4px;">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;background:#fefce8;border:1px solid #fde68a;border-radius:10px;margin-bottom:20px;">
+            <i class="bi bi-shield-lock" style="color:#d97706;margin-top:1px;"></i>
+            <span style="font-size:12px;color:#92400e;">Mật khẩu phải có ít nhất 8 ký tự.</span>
+        </div>
+
+        <form id="adminChangePwForm">
+            {% csrf_token %}
+            <div style="margin-bottom:16px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Mật khẩu mới <span style="color:#ef4444;">*</span></label>
+                <input type="password" name="new_password" id="newPwInput"
+                       class="admin-form-control" placeholder="Tối thiểu 8 ký tự">
+                <div id="newPwError" style="font-size:12px;color:#ef4444;margin-top:4px;"></div>
+            </div>
+            <div style="margin-bottom:24px;">
+                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Xác nhận mật khẩu <span style="color:#ef4444;">*</span></label>
+                <input type="password" name="confirm_password" id="confirmPwInput"
+                       class="admin-form-control" placeholder="Nhập lại mật khẩu mới">
+                <div id="confirmPwError" style="font-size:12px;color:#ef4444;margin-top:4px;"></div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" id="btnCloseChangePw2" class="admin-ghost-btn">Hủy</button>
+                <button type="submit" class="admin-primary-btn" id="btnSubmitChangePw">
+                    <i class="bi bi-key"></i> Đổi mật khẩu
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block admin_extra_js %}
+<script>
+(function () {
+    const UPDATE_URL  = '{% url "core:admin_user_update" target_user.id %}';
+    const CHANGE_PW_URL = '{% url "core:admin_user_change_password" target_user.id %}';
+
+    function openModal(el)  { el.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+    function closeModal(el) { el.style.display = 'none'; document.body.style.overflow = ''; }
+    function clearErrors(ids) { ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; }); }
+
+    const editModal = document.getElementById('adminEditUserModal');
+    const pwModal   = document.getElementById('adminChangePasswordModal');
+
+    document.getElementById('btnOpenEditUser').onclick       = () => openModal(editModal);
+    document.getElementById('btnCloseEditUser').onclick      = () => closeModal(editModal);
+    document.getElementById('btnCloseEditUser2').onclick     = () => closeModal(editModal);
+    document.getElementById('btnOpenChangePassword').onclick = () => openModal(pwModal);
+    document.getElementById('btnCloseChangePw').onclick      = () => closeModal(pwModal);
+    document.getElementById('btnCloseChangePw2').onclick     = () => closeModal(pwModal);
+
+    editModal.addEventListener('click', e => { if (e.target === editModal) closeModal(editModal); });
+    pwModal.addEventListener('click',   e => { if (e.target === pwModal)   closeModal(pwModal); });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { closeModal(editModal); closeModal(pwModal); }
+    });
+
+    document.getElementById('adminEditUserForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearErrors(['editUserNameError', 'editUserPhoneError']);
+        const btn = document.getElementById('btnSubmitEditUser');
+        btn.disabled = true;
+        btn.textContent = 'Đang lưu...';
+        try {
+            const res  = await fetch(UPDATE_URL, { method: 'POST', body: new FormData(this), headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            if (data.success) {
+                location.reload();
+            } else {
+                if (data.errors && data.errors.name)  document.getElementById('editUserNameError').textContent  = data.errors.name;
+                if (data.errors && data.errors.phone) document.getElementById('editUserPhoneError').textContent = data.errors.phone;
+                btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Lưu thay đổi';
+            }
+        } catch { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Lưu thay đổi'; }
+    });
+
+    document.getElementById('adminChangePwForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearErrors(['newPwError', 'confirmPwError']);
+        const btn = document.getElementById('btnSubmitChangePw');
+        btn.disabled = true; btn.textContent = 'Đang cập nhật...';
+        try {
+            const res  = await fetch(CHANGE_PW_URL, { method: 'POST', body: new FormData(this), headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            if (data.success) {
+                closeModal(pwModal);
+                this.reset();
+                const alert = document.createElement('div');
+                alert.className = 'admin-alert success';
+                alert.innerHTML = '<i class="bi bi-check-circle"></i><span>Đổi mật khẩu thành công.</span>';
+                document.querySelector('.admin-orders-detail-layout').prepend(alert);
+                setTimeout(() => alert.remove(), 4000);
+            } else {
+                if (data.errors && data.errors.new_password)     document.getElementById('newPwError').textContent     = data.errors.new_password;
+                if (data.errors && data.errors.confirm_password) document.getElementById('confirmPwError').textContent = data.errors.confirm_password;
+            }
+            btn.disabled = false; btn.innerHTML = '<i class="bi bi-key"></i> Đổi mật khẩu';
+        } catch { btn.disabled = false; btn.innerHTML = '<i class="bi bi-key"></i> Đổi mật khẩu'; }
+    });
+})();
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cập nhật đơn hàng</title>
+{% load order_filters %}
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:24px 0;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background-color:#1a1a2e;padding:28px 32px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:24px;letter-spacing:1px;">TechGear Shop</h1>
+            <p style="margin:6px 0 0;color:#a0a8c0;font-size:13px;">Cập nhật trạng thái đơn hàng</p>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:32px;">
+
+            <p style="margin:0 0 8px;font-size:15px;color:#333;">Xin chào <strong>{{ order.effective_customer_name }}</strong>,</p>
+            <p style="margin:0 0 24px;font-size:14px;color:#555;">Đơn hàng của bạn vừa được cập nhật trạng thái mới.</p>
+
+            <!-- Order Info -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f9fc;border-radius:6px;margin-bottom:24px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="font-size:13px;color:#666;padding:4px 0;">Mã đơn hàng</td>
+                      <td style="font-size:13px;color:#1a1a2e;font-weight:bold;text-align:right;padding:4px 0;">#{{ order.order_code }}</td>
+                    </tr>
+                    <tr>
+                      <td style="font-size:13px;color:#666;padding:4px 0;">Trạng thái mới</td>
+                      <td style="text-align:right;padding:4px 0;">
+                        {% if new_status == 'completed' %}
+                          <span style="display:inline-block;background-color:#d1fae5;color:#065f46;font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;">{{ status_label }}</span>
+                        {% elif new_status == 'cancelled' %}
+                          <span style="display:inline-block;background-color:#fee2e2;color:#991b1b;font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;">{{ status_label }}</span>
+                        {% else %}
+                          <span style="display:inline-block;background-color:#dbeafe;color:#1e40af;font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;">{{ status_label }}</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <h3 style="margin:0 0 12px;font-size:15px;color:#1a1a2e;">Chi tiết đơn hàng</h3>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;">
+              <thead>
+                <tr style="background-color:#1a1a2e;">
+                  <th style="padding:10px 12px;text-align:left;font-size:12px;color:#ffffff;font-weight:600;border-radius:4px 0 0 0;">Sản phẩm</th>
+                  <th style="padding:10px 12px;text-align:center;font-size:12px;color:#ffffff;font-weight:600;">SL</th>
+                  <th style="padding:10px 12px;text-align:right;font-size:12px;color:#ffffff;font-weight:600;">Đơn giá</th>
+                  <th style="padding:10px 12px;text-align:right;font-size:12px;color:#ffffff;font-weight:600;border-radius:0 4px 0 0;">Thành tiền</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in items %}
+                <tr style="border-bottom:1px solid #f0f0f0;">
+                  <td style="padding:10px 12px;font-size:13px;color:#333;">{{ item.product.name }}</td>
+                  <td style="padding:10px 12px;font-size:13px;color:#333;text-align:center;">{{ item.quantity }}</td>
+                  <td style="padding:10px 12px;font-size:13px;color:#333;text-align:right;">{{ item.price|vnd }}đ</td>
+                  <td style="padding:10px 12px;font-size:13px;color:#333;text-align:right;">{{ item.line_total|vnd }}đ</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr style="background-color:#f8f9fc;">
+                  <td colspan="3" style="padding:12px;font-size:14px;font-weight:bold;color:#1a1a2e;text-align:right;">Tổng tiền:</td>
+                  <td style="padding:12px;font-size:15px;font-weight:bold;color:#1a1a2e;text-align:right;">{{ order.total_price|vnd }}đ</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <!-- Message Box -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+              <tr>
+                <td style="background-color:#f0f4ff;border-left:4px solid #1a1a2e;border-radius:0 6px 6px 0;padding:16px 20px;">
+                  <p style="margin:0;font-size:14px;color:#333;line-height:1.6;">{{ message }}</p>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 20px;text-align:center;">
+              <a href="{{ order_detail_url }}" style="display:inline-block;background-color:#1a1a2e;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 22px;border-radius:6px;">Xem chi tiết đơn hàng</a>
+            </p>
+            <p style="margin:0;font-size:14px;color:#555;text-align:center;padding-top:16px;border-top:1px solid #f0f0f0;">
+              <span style="font-size:13px;color:#888;">Nếu có thắc mắc, vui lòng liên hệ: techgear.shop.vn@gmail.com</span>
+            </p>
+
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background-color:#f0f0f0;padding:16px 32px;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#999;">&copy; 2026 TechGear Shop. All rights reserved.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

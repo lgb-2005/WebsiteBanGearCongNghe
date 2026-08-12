@@ -1,0 +1,864 @@
+{% extends 'core/admin/base.html' %}
+{% load order_filters %}
+
+{% block admin_extra_css %}
+<style>
+.revenue-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    padding: 18px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.revenue-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.revenue-filter-group > label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+}
+.revenue-filter-group > label span {
+    margin-left: 4px;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 500;
+}
+.revenue-filter-group select,
+.revenue-filter-group input {
+    min-width: 150px;
+    height: 38px;
+    padding: 8px 34px 8px 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    color: #1e293b;
+    font-size: 13px;
+    line-height: 1.3;
+    background-color: #fff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.revenue-filter-group select {
+    appearance: none;
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, #64748b 50%), linear-gradient(135deg, #64748b 50%, transparent 50%);
+    background-position: calc(100% - 14px) 16px, calc(100% - 9px) 16px;
+    background-repeat: no-repeat;
+    background-size: 5px 5px, 5px 5px;
+}
+.revenue-filter-group select:hover,
+.revenue-filter-group input:hover {
+    border-color: #94a3b8;
+    background-color: #f8fafc;
+}
+.revenue-filter-group select:focus,
+.revenue-filter-group input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+}
+.revenue-checklist {
+    position: relative;
+    width: 250px;
+    --cmd-bg: #fff;
+    --cmd-fg: #1e293b;
+    --cmd-accent: #6366f1;
+    --cmd-accent-fg: #fff;
+    --cmd-muted: #f1f5f9;
+    --cmd-muted-fg: #64748b;
+    --cmd-border: #e2e8f0;
+    --cmd-ring: rgba(99, 102, 241, 0.14);
+    --cmd-radius: 10px;
+}
+.revenue-checklist-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+    width: 100%;
+    height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--cmd-border);
+    border-radius: var(--cmd-radius);
+    color: var(--cmd-fg);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    background: var(--cmd-bg);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.revenue-checklist-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.revenue-checklist-trigger:hover {
+    border-color: #94a3b8;
+    background: var(--cmd-muted);
+}
+.revenue-checklist.open .revenue-checklist-trigger {
+    border-color: var(--cmd-accent);
+    box-shadow: 0 0 0 3px var(--cmd-ring);
+}
+.revenue-checklist-trigger i {
+    color: var(--cmd-muted-fg);
+    font-size: 12px;
+    transition: transform 0.15s ease;
+}
+.revenue-checklist.open .revenue-checklist-trigger i {
+    transform: rotate(180deg);
+}
+.revenue-checklist-menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 7px);
+    left: 0;
+    box-sizing: border-box;
+    display: none;
+    width: 100%;
+    max-height: 300px;
+    padding: 6px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border: 1px solid var(--cmd-border);
+    border-radius: var(--cmd-radius);
+    background: var(--cmd-bg);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.18);
+}
+.revenue-checklist.open .revenue-checklist-menu {
+    display: block;
+}
+.revenue-command-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 6px 8px;
+    color: var(--cmd-fg);
+    font-size: 14px;
+    line-height: 1.25;
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+}
+.revenue-command-item > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.revenue-command-item:hover,
+.revenue-command-item[aria-selected="true"] {
+    background: var(--cmd-accent);
+    color: var(--cmd-accent-fg);
+}
+.revenue-command-item .cmd-check {
+    flex: 0 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+}
+.revenue-command-item[aria-selected="true"] .cmd-check {
+    opacity: 1;
+}
+.revenue-command-item input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+.revenue-command-empty {
+    padding: 12px 8px;
+    color: var(--cmd-muted-fg);
+    font-size: 13px;
+    text-align: center;
+}
+@media (max-width: 640px) {
+    .revenue-checklist {
+        width: min(280px, 100%);
+    }
+}
+.revenue-filter-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+.revenue-export-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.revenue-tab-list {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.revenue-tab-btn {
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+}
+.revenue-tab-btn.active {
+    color: #111827;
+    border-bottom-color: #6366f1;
+}
+.revenue-tab-panel {
+    display: none;
+}
+.revenue-tab-panel.active {
+    display: block;
+}
+.revenue-section {
+    margin-bottom: 24px;
+}
+.revenue-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #111827;
+}
+.revenue-table-wrap {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    padding: 16px;
+    overflow-x: auto;
+}
+.revenue-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.revenue-table th,
+.revenue-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #f3f4f6;
+}
+.revenue-table th {
+    font-weight: 700;
+    color: #6b7280;
+    background: #f9fafb;
+}
+.revenue-table td {
+    color: #111827;
+}
+.revenue-table tr:last-child td {
+    border-bottom: none;
+}
+.revenue-text-right {
+    text-align: right;
+}
+.revenue-view-all {
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6366f1;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<!-- Filter -->
+<form method="GET" class="revenue-filter-form" id="revenueFilterForm">
+    <div class="revenue-filter-group">
+        <label>Kỳ</label>
+        <select name="period">
+            <option value="day" {% if current_period == 'day' %}selected{% endif %}>Theo ngày</option>
+            <option value="month" {% if current_period == 'month' %}selected{% endif %}>Theo tháng</option>
+            <option value="quarter" {% if current_period == 'quarter' %}selected{% endif %}>Theo quý</option>
+            <option value="year" {% if current_period == 'year' %}selected{% endif %}>Theo năm</option>
+        </select>
+    </div>
+    <div class="revenue-filter-group">
+        <label>Từ ngày</label>
+        <input type="date" name="date_from" value="{{ current_date_from }}">
+    </div>
+    <div class="revenue-filter-group">
+        <label>Đến ngày</label>
+        <input type="date" name="date_to" value="{{ current_date_to }}">
+    </div>
+    <div class="revenue-filter-group">
+        <label>Top N</label>
+        <select name="top_limit">
+            <option value="5" {% if current_top_limit == 5 %}selected{% endif %}>5</option>
+            <option value="10" {% if current_top_limit == 10 %}selected{% endif %}>10</option>
+            <option value="20" {% if current_top_limit == 20 %}selected{% endif %}>20</option>
+            <option value="50" {% if current_top_limit == 50 %}selected{% endif %}>50</option>
+            <option value="100" {% if current_top_limit == 100 %}selected{% endif %}>100</option>
+        </select>
+    </div>
+    <div class="revenue-filter-group">
+        <label>Thương hiệu</label>
+        <div class="revenue-checklist" data-placeholder="Tất cả thương hiệu">
+            <button type="button" class="revenue-checklist-trigger" aria-expanded="false">
+                <span class="revenue-checklist-value">Tất cả thương hiệu</span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="revenue-checklist-menu" role="listbox" aria-multiselectable="true">
+                {% for brand in brands %}
+                <div class="revenue-command-item" role="option" aria-selected="{% if brand.id in selected_brands %}true{% else %}false{% endif %}" data-value="{{ brand.id }}">
+                    <span>{{ brand.name }}</span>
+                    <span class="cmd-check"><i class="bi bi-check"></i></span>
+                    <input type="checkbox" name="brand" value="{{ brand.id }}" {% if brand.id in selected_brands %}checked{% endif %}>
+                </div>
+                {% empty %}
+                <div class="revenue-command-empty">Chưa có thương hiệu</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="revenue-filter-group">
+        <label>Danh mục</label>
+        <div class="revenue-checklist" data-placeholder="Tất cả danh mục">
+            <button type="button" class="revenue-checklist-trigger" aria-expanded="false">
+                <span class="revenue-checklist-value">Tất cả danh mục</span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="revenue-checklist-menu" role="listbox" aria-multiselectable="true">
+                {% for category in categories %}
+                <div class="revenue-command-item" role="option" aria-selected="{% if category.id in selected_categories %}true{% else %}false{% endif %}" data-value="{{ category.id }}">
+                    <span>{{ category.name }}</span>
+                    <span class="cmd-check"><i class="bi bi-check"></i></span>
+                    <input type="checkbox" name="category" value="{{ category.id }}" {% if category.id in selected_categories %}checked{% endif %}>
+                </div>
+                {% empty %}
+                <div class="revenue-command-empty">Chưa có danh mục</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="revenue-filter-group">
+        <label>Phương thức thanh toán</label>
+        <div class="revenue-checklist" data-placeholder="Tất cả phương thức">
+            <button type="button" class="revenue-checklist-trigger" aria-expanded="false">
+                <span class="revenue-checklist-value">Tất cả phương thức</span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="revenue-checklist-menu" role="listbox" aria-multiselectable="true">
+                <div class="revenue-command-item" role="option" aria-selected="{% if 'cod' in selected_payment_methods %}true{% else %}false{% endif %}" data-value="cod">
+                    <span>COD</span>
+                    <span class="cmd-check"><i class="bi bi-check"></i></span>
+                    <input type="checkbox" name="payment_method" value="cod" {% if 'cod' in selected_payment_methods %}checked{% endif %}>
+                </div>
+                <div class="revenue-command-item" role="option" aria-selected="{% if 'vnpay' in selected_payment_methods %}true{% else %}false{% endif %}" data-value="vnpay">
+                    <span>VNPay</span>
+                    <span class="cmd-check"><i class="bi bi-check"></i></span>
+                    <input type="checkbox" name="payment_method" value="vnpay" {% if 'vnpay' in selected_payment_methods %}checked{% endif %}>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="revenue-filter-actions">
+        <button type="submit" class="admin-analytics-btn-apply">Áp dụng</button>
+        <a href="{% url 'core:admin_revenue_report' %}" class="admin-analytics-btn-reset">Reset</a>
+    </div>
+</form>
+
+<!-- Export -->
+<div class="revenue-export-actions">
+    <a href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}export=xlsx" class="admin-analytics-btn-reset" style="text-decoration:none;">
+        <i class="bi bi-filetype-xlsx"></i> Xuất Excel
+    </a>
+</div>
+
+<!-- Section 1: KPI -->
+<div class="admin-analytics-grid admin-analytics-grid--4col">
+    <article class="admin-stat-card accent-dark">
+        <div class="admin-stat-icon"><i class="bi bi-currency-dollar"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Doanh thu</span>
+            <strong class="admin-stat-value">{{ report.kpi.revenue|vnd }} đ</strong>
+            <div class="admin-stat-secondary">
+                {% if report.kpi.growth_pct is not None %}
+                    {% if report.kpi.growth_pct >= 0 %}
+                    <span class="admin-stat-trend positive">↑ +{{ report.kpi.growth_pct }}% so với kỳ trước <br> ({{ report.kpi.previous_date_from|date:"d/m/Y" }} – {{ report.kpi.previous_date_to|date:"d/m/Y" }})</span>
+                    {% else %}
+                    <span class="admin-stat-trend negative">↓ {{ report.kpi.growth_pct }}% so với kỳ trước <br> ({{ report.kpi.previous_date_from|date:"d/m/Y" }} – {{ report.kpi.previous_date_to|date:"d/m/Y" }})</span>
+                    {% endif %}
+                {% else %}
+                    <span class="admin-stat-trend neutral">Không có dữ liệu kỳ trước</span>
+                {% endif %}
+            </div>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-blue">
+        <div class="admin-stat-icon"><i class="bi bi-bag-check"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Đơn hoàn thành</span>
+            <strong class="admin-stat-value">{{ report.kpi.orders }}</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-green">
+        <div class="admin-stat-icon"><i class="bi bi-calculator"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">AOV (Giá trị trung bình mỗi đơn hàng)</span>
+            <strong class="admin-stat-value">{{ report.kpi.aov|vnd }} đ</strong>
+        </div>
+    </article>
+    <article class="admin-stat-card accent-orange">
+        <div class="admin-stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+        <div class="admin-stat-content">
+            <span class="admin-stat-label">Doanh thu kỳ trước <br> ({{ report.kpi.previous_date_from|date:"d/m/Y" }} – {{ report.kpi.previous_date_to|date:"d/m/Y" }})</span>
+            <strong class="admin-stat-value">{{ report.kpi.previous_revenue|vnd }} đ</strong>
+        </div>
+    </article>
+</div>
+
+<!-- Section 2: Revenue Trend -->
+<div class="admin-analytics-chart-wrap">
+    <h3 class="admin-analytics-chart-title">Xu hướng doanh thu</h3>
+    {% if revenue_data_json != '[]' %}
+    <div id="revenueTrendChart"></div>
+    {% else %}
+    <p class="admin-analytics-empty">Chưa có dữ liệu doanh thu.</p>
+    {% endif %}
+</div>
+
+<!-- Section 3: Revenue Detail Table -->
+<div class="revenue-section">
+    <h3 class="revenue-section-title">Bảng chi tiết doanh thu</h3>
+    <div class="revenue-table-wrap">
+        <table class="revenue-table">
+            <thead>
+                <tr>
+                    <th>Kỳ</th>
+                    <th class="revenue-text-right">Số đơn hoàn thành</th>
+                    <th class="revenue-text-right">Doanh thu</th>
+                    <th class="revenue-text-right">AOV</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report.trend %}
+                <tr>
+                    <td>{{ row.period_label }}</td>
+                    <td class="revenue-text-right">{{ row.orders }}</td>
+                    <td class="revenue-text-right">{{ row.revenue|vnd }} đ</td>
+                    <td class="revenue-text-right">{{ row.aov|vnd }} đ</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="admin-analytics-empty">Chưa có dữ liệu.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Section 4: Revenue Comparison -->
+<div class="revenue-section">
+    <h3 class="revenue-section-title">So sánh kỳ</h3>
+    <div class="revenue-table-wrap">
+        <table class="revenue-table">
+            <thead>
+                <tr>
+                    <th>Kỳ</th>
+                    <th>Khoảng thời gian</th>
+                    <th class="revenue-text-right">Số đơn</th>
+                    <th class="revenue-text-right">Doanh thu</th>
+                    <th class="revenue-text-right">AOV</th>
+                    <th class="revenue-text-right">Tăng trưởng</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Kỳ hiện tại</strong></td>
+                    <td>{{ report.comparison.current.date_from|date:"d/m/Y" }} – {{ report.comparison.current.date_to|date:"d/m/Y" }}</td>
+                    <td class="revenue-text-right">{{ report.comparison.current.orders }}</td>
+                    <td class="revenue-text-right">{{ report.comparison.current.revenue|vnd }} đ</td>
+                    <td class="revenue-text-right">{{ report.comparison.current.aov|vnd }} đ</td>
+                    <td class="revenue-text-right" rowspan="2">
+                        {% if report.comparison.growth_pct is not None %}
+                            {% if report.comparison.growth_pct >= 0 %}
+                            <span class="admin-stat-trend positive">+{{ report.comparison.growth_pct }}%</span>
+                            {% else %}
+                            <span class="admin-stat-trend negative">{{ report.comparison.growth_pct }}%</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="admin-stat-trend neutral">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Kỳ trước</strong></td>
+                    <td>{{ report.comparison.previous.date_from|date:"d/m/Y" }} – {{ report.comparison.previous.date_to|date:"d/m/Y" }}</td>
+                    <td class="revenue-text-right">{{ report.comparison.previous.orders }}</td>
+                    <td class="revenue-text-right">{{ report.comparison.previous.revenue|vnd }} đ</td>
+                    <td class="revenue-text-right">{{ report.comparison.previous.aov|vnd }} đ</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Section 5: Revenue Breakdown -->
+<div class="revenue-section">
+    <h3 class="revenue-section-title">Phân tích doanh thu</h3>
+    <div class="revenue-tab-list">
+        <button type="button" class="revenue-tab-btn active" data-tab="category">Danh mục</button>
+        <button type="button" class="revenue-tab-btn" data-tab="brand">Thương hiệu</button>
+        <button type="button" class="revenue-tab-btn" data-tab="product">Sản phẩm</button>
+    </div>
+    <div class="revenue-tab-panel active" id="tab-category">
+        <div class="revenue-table-wrap" id="category-top">
+            <table class="revenue-table">
+                <thead>
+                    <tr>
+                        <th>Danh mục</th>
+                        <th class="revenue-text-right">Doanh thu</th>
+                        <th class="revenue-text-right">Số lượng</th>
+                        <th class="revenue-text-right">Số đơn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report.breakdown_category %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td class="revenue-text-right">{{ row.revenue|vnd }} đ</td>
+                        <td class="revenue-text-right">{{ row.quantity }}</td>
+                        <td class="revenue-text-right">{{ row.orders }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="admin-analytics-empty">Chưa có dữ liệu.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if report.breakdown_category_all|length > current_top_limit %}
+            <button type="button" class="revenue-view-all" data-toggle="category">Xem tất cả</button>
+            {% endif %}
+        </div>
+        <div class="revenue-table-wrap" id="category-all" style="display:none;">
+            <table class="revenue-table">
+                <thead>
+                    <tr>
+                        <th>Danh mục</th>
+                        <th class="revenue-text-right">Doanh thu</th>
+                        <th class="revenue-text-right">Số lượng</th>
+                        <th class="revenue-text-right">Số đơn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report.breakdown_category_all %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td class="revenue-text-right">{{ row.revenue|vnd }} đ</td>
+                        <td class="revenue-text-right">{{ row.quantity }}</td>
+                        <td class="revenue-text-right">{{ row.orders }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="admin-analytics-empty">Chưa có dữ liệu.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="button" class="revenue-view-all" data-toggle="category">Thu gọn</button>
+        </div>
+    </div>
+    <div class="revenue-tab-panel" id="tab-brand">
+        <div class="revenue-table-wrap" id="brand-top">
+            <table class="revenue-table">
+                <thead>
+                    <tr>
+                        <th>Thương hiệu</th>
+                        <th class="revenue-text-right">Doanh thu</th>
+                        <th class="revenue-text-right">Số lượng</th>
+                        <th class="revenue-text-right">Số đơn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report.breakdown_brand %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td class="revenue-text-right">{{ row.revenue|vnd }} đ</td>
+                        <td class="revenue-text-right">{{ row.quantity }}</td>
+                        <td class="revenue-text-right">{{ row.orders }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="admin-analytics-empty">Chưa có dữ liệu.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if report.breakdown_brand_all|length > current_top_limit %}
+            <button type="button" class="revenue-view-all" data-toggle="brand">Xem tất cả</button>
+            {% endif %}
+        </div>
+        <div class="revenue-table-wrap" id="brand-all" style="display:none;">
+            <table class="revenue-table">
+                <thead>
+                    <tr>
+                        <th>Thương hiệu</th>
+                        <th class="revenue-text-right">Doanh thu</th>
+                        <th class="revenue-text-right">Số lượng</th>
+                        <th class="revenue-text-right">Số đơn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report.breakdown_brand_all %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td class="revenue-text-right">{{ row.revenue|vnd }} đ</td>
+                        <td class="revenue-text-right">{{ row.quantity }}</td>
+                        <td class="revenue-text-right">{{ row.orders }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="admin-analytics-empty">Chưa có dữ liệu.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="button" class="revenue-view-all" data-toggle="brand">Thu gọn</button>
+        </div>
+    </div>
+    <div class="revenue-tab-panel" id="tab-product">
+        <div class="revenue-table-wrap" id="product-top">
+            <table class="revenue-table">
+                <thead>
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th class="revenue-text-right">Doanh thu</th>
+                        <th class="revenue-text-right">Số lượng</th>
+                        <th class="revenue-text-right">Số đơn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report.breakdown_product %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td class="revenue-text-right">{{ row.revenue|vnd }} đ</td>
+                        <td class="revenue-text-right">{{ row.quantity }}</td>
+                        <td class="revenue-text-right">{{ row.orders }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="admin-analytics-empty">Chưa có dữ liệu.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if report.breakdown_product_all|length > current_top_limit %}
+            <button type="button" class="revenue-view-all" data-toggle="product">Xem tất cả</button>
+            {% endif %}
+        </div>
+        <div class="revenue-table-wrap" id="product-all" style="display:none;">
+            <table class="revenue-table">
+                <thead>
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th class="revenue-text-right">Doanh thu</th>
+                        <th class="revenue-text-right">Số lượng</th>
+                        <th class="revenue-text-right">Số đơn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report.breakdown_product_all %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td class="revenue-text-right">{{ row.revenue|vnd }} đ</td>
+                        <td class="revenue-text-right">{{ row.quantity }}</td>
+                        <td class="revenue-text-right">{{ row.orders }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="admin-analytics-empty">Chưa có dữ liệu.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="button" class="revenue-view-all" data-toggle="product">Thu gọn</button>
+        </div>
+    </div>
+</div>
+
+<!-- Section 6: Top Revenue Products -->
+<div class="revenue-section">
+    <h3 class="revenue-section-title">Top sản phẩm theo doanh thu</h3>
+    <div class="revenue-table-wrap">
+        <table class="revenue-table">
+            <thead>
+                <tr>
+                    <th>Sản phẩm</th>
+                    <th class="revenue-text-right">Doanh thu</th>
+                    <th class="revenue-text-right">Số lượng bán</th>
+                    <th class="revenue-text-right">Giá bán TB</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report.top_products %}
+                <tr>
+                    <td>{{ row.name }}</td>
+                    <td class="revenue-text-right">{{ row.revenue|vnd }} đ</td>
+                    <td class="revenue-text-right">{{ row.quantity }}</td>
+                    <td class="revenue-text-right">{{ row.avg_price|vnd }} đ</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="admin-analytics-empty">Chưa có dữ liệu.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Section 7: Cancel Impact -->
+<div class="revenue-section">
+    <h3 class="revenue-section-title">Tác động đơn hủy</h3>
+    <div class="admin-analytics-grid admin-analytics-grid--3col">
+        <article class="admin-stat-card accent-dark">
+            <div class="admin-stat-icon"><i class="bi bi-currency-dollar"></i></div>
+            <div class="admin-stat-content">
+                <span class="admin-stat-label">Doanh thu hoàn thành</span>
+                <strong class="admin-stat-value">{{ report.cancel.completed_revenue|vnd }} đ</strong>
+            </div>
+        </article>
+        <article class="admin-stat-card accent-orange">
+            <div class="admin-stat-icon"><i class="bi bi-x-circle"></i></div>
+            <div class="admin-stat-content">
+                <span class="admin-stat-label">Đơn đã hủy</span>
+                <strong class="admin-stat-value">{{ report.cancel.cancelled_orders }}</strong>
+            </div>
+        </article>
+        <article class="admin-stat-card accent-red">
+            <div class="admin-stat-icon"><i class="bi bi-currency-dollar"></i></div>
+            <div class="admin-stat-content">
+                <span class="admin-stat-label">Giá trị đơn hủy</span>
+                <strong class="admin-stat-value">{{ report.cancel.cancelled_revenue|vnd }} đ</strong>
+            </div>
+        </article>
+    </div>
+</div>
+{% endblock %}
+
+{% block admin_extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
+<script>
+(function () {
+    const revenueLabels = {{ revenue_labels_json|safe }};
+    const revenueData = {{ revenue_data_json|safe }};
+    const ordersData = {{ orders_data_json|safe }};
+    const aovData = {{ aov_data_json|safe }};
+
+    const chartEl = document.getElementById('revenueTrendChart');
+    if (chartEl && revenueData.length) {
+        new ApexCharts(chartEl, {
+            chart: { type: 'line', height: 340, toolbar: { show: false }, fontFamily: 'inherit' },
+            series: [
+                { name: 'Doanh thu (đ)', type: 'column', data: revenueData },
+                { name: 'Số đơn', type: 'line', data: ordersData },
+                { name: 'AOV (đ)', type: 'line', data: aovData },
+            ],
+            xaxis: { categories: revenueLabels, labels: { style: { fontSize: '12px' } } },
+            yaxis: [
+                { seriesName: 'Doanh thu (đ)', labels: { formatter: v => v.toLocaleString('vi-VN') + ' đ' } },
+                { seriesName: 'Số đơn', show: false },
+                { seriesName: 'AOV (đ)', opposite: true, labels: { formatter: v => v.toLocaleString('vi-VN') + ' đ' } },
+            ],
+            colors: ['#6366f1', '#10b981', '#f59e0b'],
+            stroke: { width: [0, 2, 2] },
+            plotOptions: { bar: { borderRadius: 6, columnWidth: '55%' } },
+            dataLabels: { enabled: false },
+            grid: { borderColor: '#f3f4f6' },
+            legend: { position: 'top', fontSize: '12px' },
+            tooltip: { y: { formatter: v => v.toLocaleString('vi-VN') } },
+        }).render();
+    }
+
+    const checklists = document.querySelectorAll('.revenue-checklist');
+    const updateChecklistValue = checklist => {
+        const checked = checklist.querySelectorAll('input:checked');
+        const value = checklist.querySelector('.revenue-checklist-value');
+        if (!checked.length) {
+            value.textContent = checklist.dataset.placeholder;
+        } else if (checked.length === 1) {
+            value.textContent = checked[0].previousElementSibling.previousElementSibling.textContent.trim();
+        } else {
+            value.textContent = `${checked.length} đã chọn`;
+        }
+    };
+    const syncItemState = item => {
+        const input = item.querySelector('input[type="checkbox"]');
+        const isSelected = input.checked;
+        item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    };
+    checklists.forEach(checklist => {
+        const trigger = checklist.querySelector('.revenue-checklist-trigger');
+        trigger.addEventListener('click', () => {
+            const isOpen = checklist.classList.contains('open');
+            checklists.forEach(item => {
+                item.classList.remove('open');
+                item.querySelector('.revenue-checklist-trigger').setAttribute('aria-expanded', 'false');
+            });
+            if (!isOpen) {
+                checklist.classList.add('open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+        });
+        checklist.querySelectorAll('.revenue-command-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const input = item.querySelector('input[type="checkbox"]');
+                input.checked = !input.checked;
+                syncItemState(item);
+                updateChecklistValue(checklist);
+            });
+        });
+        checklist.querySelectorAll('.revenue-command-item').forEach(syncItemState);
+        updateChecklistValue(checklist);
+    });
+    document.addEventListener('click', event => {
+        if (event.target.closest('.revenue-checklist')) {
+            return;
+        }
+        checklists.forEach(checklist => {
+            checklist.classList.remove('open');
+            checklist.querySelector('.revenue-checklist-trigger').setAttribute('aria-expanded', 'false');
+        });
+    });
+
+    // Tab switching
+    const tabButtons = document.querySelectorAll('.revenue-tab-btn');
+    const tabPanels = document.querySelectorAll('.revenue-tab-panel');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            tabButtons.forEach(b => b.classList.toggle('active', b === btn));
+            tabPanels.forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+        });
+    });
+
+    // View all toggle
+    document.querySelectorAll('.revenue-view-all').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.toggle;
+            const topWrap = document.getElementById(tab + '-top');
+            const allWrap = document.getElementById(tab + '-all');
+            if (topWrap && allWrap) {
+                const isHidden = allWrap.style.display === 'none';
+                allWrap.style.display = isHidden ? 'block' : 'none';
+                topWrap.style.display = isHidden ? 'none' : 'block';
+                btn.textContent = isHidden ? 'Thu gọn' : 'Xem tất cả';
+            }
+        });
+    });
+})();
+</script>
+{% endblock %}

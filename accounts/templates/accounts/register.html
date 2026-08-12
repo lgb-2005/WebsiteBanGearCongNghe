@@ -1,0 +1,425 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Đăng Ký - TechGear{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'accounts/css/register.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="register-page">
+    <div class="register-container">
+        <div class="register-layout">
+            <div class="register-intro-panel">
+                <span class="register-badge">TechGear Members</span>
+                <h1 class="register-main-title">Tạo tài khoản mới</h1>
+                <p class="register-subtitle">Đăng ký để theo dõi đơn hàng, lưu sản phẩm yêu thích và mua sắm nhanh hơn trên TechGear.</p>
+
+                <div class="register-feature-list">
+                    <div class="feature-item">
+                        <i class="bi bi-lightning-charge"></i>
+                        <div>
+                            <strong>Mua hàng nhanh hơn</strong>
+                            <span>Lưu sẵn thông tin cá nhân để thanh toán thuận tiện.</span>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <i class="bi bi-bag-check"></i>
+                        <div>
+                            <strong>Theo dõi đơn hàng</strong>
+                            <span>Quản lý lịch sử giao dịch và trạng thái đơn hàng dễ dàng.</span>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <i class="bi bi-heart"></i>
+                        <div>
+                            <strong>Lưu sản phẩm yêu thích</strong>
+                            <span>Tạo danh sách sản phẩm quan tâm để quay lại nhanh chóng.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="register-form-panel">
+                <div class="register-form-header">
+                    <h2 class="register-form-title">Thông tin đăng ký</h2>
+                    <p class="register-form-desc">Điền đầy đủ thông tin bên dưới để bắt đầu sử dụng tài khoản của bạn.</p>
+                </div>
+
+                <form method="POST" class="register-form" id="registerForm" action="{% url 'accounts:register' %}">
+                    {% csrf_token %}
+
+                    <div class="form-status" id="registerStatus" hidden></div>
+
+                    <div class="form-grid">
+                        <div class="input-group full-width">
+                            <label for="name">Họ và tên <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-person"></i>
+                                <input type="text" id="name" name="name" class="form-input" placeholder="Họ và tên" value="{{ form.name.value|default:'' }}" required>
+                            </div>
+                            <div class="field-error" data-error="name"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="email">Email <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-envelope"></i>
+                                <input type="email" id="email" name="email" class="form-input" placeholder="Email của bạn" value="{{ form.email.value|default:'' }}" required>
+                            </div>
+                            <div class="field-error" data-error="email"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="phone">Số điện thoại</label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-telephone"></i>
+                                <input type="tel" id="phone" name="phone" class="form-input" placeholder="Số điện thoại của bạn" value="{{ form.phone.value|default:'' }}">
+                            </div>
+                            <div class="field-error" data-error="phone"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="provinceSelect">
+                                Tỉnh / Thành phố
+                            </label>
+                        
+                            <select
+                                id="provinceSelect"
+                                class="form-input"
+                            >
+                                <option value="">
+                                    Chọn tỉnh/thành
+                                </option>
+                            </select>
+                        
+                            <input
+                                type="hidden"
+                                id="province_code"
+                                name="province_code"
+                                value="{{ form.province_code.value|default:'' }}"
+                            >
+                            <input
+                                type="hidden"
+                                id="province_name"
+                                name="province_name"
+                                value="{{ form.province_name.value|default:'' }}"
+                            >
+                        
+                            <div class="field-error" data-error="province_code"></div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="wardSelect">
+                                Phường / Xã
+                            </label>
+                        
+                            <select
+                                id="wardSelect"
+                                class="form-input"
+                            >
+                                <option value="">
+                                    Chọn phường/xã
+                                </option>
+                            </select>
+                        
+                            <input
+                                type="hidden"
+                                id="ward_code"
+                                name="ward_code"
+                                value="{{ form.ward_code.value|default:'' }}"
+                            >
+
+                            <input
+                                type="hidden"
+                                id="ward_name"
+                                name="ward_name"
+                                value="{{ form.ward_name.value|default:'' }}"
+                            >
+                        
+                            <div class="field-error" data-error="ward_code"></div>
+                        </div>
+                        
+                        <div class="input-group full-width">
+                            <label for="street_address">
+                                Địa chỉ chi tiết
+                            </label>
+                        
+                            <div class="input-wrapper input-wrapper-textarea">
+                                <i class="bi bi-house-door"></i>
+                        
+                                <textarea
+                                    id="street_address"
+                                    name="street_address"
+                                    class="form-input form-textarea"
+                                    placeholder="Số nhà, tên đường..."
+                                    rows="4"
+                                >{{ form.street_address.value|default:'' }}</textarea>
+                            </div>
+                        
+                            <div class="field-error" data-error="street_address"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="password1">Mật khẩu <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-lock"></i>
+                                <input type="password" id="password1" name="password1" class="form-input" placeholder="Nhập mật khẩu" required>
+                            </div>
+                            <div class="field-error" data-error="password1"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="password2">Nhập lại mật khẩu <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-shield-lock"></i>
+                                <input type="password" id="password2" name="password2" class="form-input" placeholder="Nhập lại mật khẩu" required>
+                            </div>
+                            <div class="field-error" data-error="password2"></div>
+                        </div>
+                    </div>
+
+                    <div class="field-error form-general-error" data-error="__all__"></div>
+
+                    <div class="register-actions">
+                        <button type="submit" class="btn-register" id="registerSubmitBtn">Đăng ký tài khoản</button>
+                    </div>
+                </form>
+
+                <div class="login-link">
+                    Bạn đã có tài khoản?
+                    <a href="{% url 'accounts:login' %}">Đăng nhập</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const registerForm = document.getElementById("registerForm");
+    if (!registerForm) return;
+
+    const statusBox = document.getElementById("registerStatus");
+    const submitBtn = document.getElementById("registerSubmitBtn");
+
+    function clearErrors() {
+        registerForm.querySelectorAll(".field-error").forEach((el) => {
+            el.innerText = "";
+        });
+    }
+
+    function showStatus(message, type) {
+        statusBox.hidden = false;
+        statusBox.className = `form-status ${type}`;
+        statusBox.innerText = message;
+    }
+
+    function showErrors(errors) {
+        Object.entries(errors || {}).forEach(([field, messages]) => {
+            const errorEl = registerForm.querySelector(`[data-error="${field}"]`);
+            if (errorEl) {
+                errorEl.innerText = messages[0];
+            }
+        });
+    }
+
+const provinceSelect =
+document.getElementById("provinceSelect");
+
+const wardSelect =
+    document.getElementById("wardSelect");
+
+const provinceInput =
+    document.getElementById("province_code");
+
+const wardInput =
+    document.getElementById("ward_code");
+
+const provinceNameInput =
+document.getElementById("province_name");
+
+const wardNameInput =
+    document.getElementById("ward_name");
+
+let provinces = [];
+
+fetch('/static/orders/data/vietnam_administrative.json')
+    .then(response => response.json())
+    .then(data => {
+
+        provinces = data;
+
+        loadProvinces();
+
+        if (provinceInput.value) {
+
+            provinceSelect.value =
+                provinceInput.value;
+
+            const province =
+                provinces.find(
+                    p => String(p.province_code) === provinceInput.value
+                );
+
+            loadWards(province);
+
+            if (wardInput.value) {
+                wardSelect.value =
+                    wardInput.value;
+            }
+        }
+    });
+
+function loadProvinces() {
+
+    provinceSelect.innerHTML =
+        '<option value="">Chọn tỉnh/thành</option>';
+
+    const sortedProvinces =
+        [...provinces].sort((a, b) =>
+            a.name.localeCompare(
+                b.name,
+                'vi'
+            )
+        );
+
+    sortedProvinces.forEach(province => {
+
+        const option =
+            document.createElement('option');
+
+        option.value =
+            province.province_code;
+
+        option.textContent =
+            province.name;
+
+        provinceSelect.appendChild(option);
+    });
+}
+
+function loadWards(province) {
+
+    wardSelect.innerHTML =
+        '<option value="">Chọn phường/xã</option>';
+
+    if (!province) {
+        return;
+    }
+
+    const sortedWards =
+        [...province.wards].sort((a, b) =>
+            a.name.localeCompare(
+                b.name,
+                'vi'
+            )
+        );
+
+    sortedWards.forEach(ward => {
+
+        const option =
+            document.createElement('option');
+
+        option.value =
+            ward.ward_code;
+
+        option.textContent =
+            ward.name;
+
+        wardSelect.appendChild(option);
+    });
+}
+
+
+provinceSelect.addEventListener('change', function () {
+
+provinceInput.value =
+    this.value;
+
+provinceNameInput.value =
+    this.options[
+        this.selectedIndex
+    ].text;
+
+wardInput.value = '';
+wardNameInput.value = '';
+
+const province =
+    provinces.find(
+        p => String(p.province_code) === provinceInput.value
+    );
+
+loadWards(province);
+});
+
+wardSelect.addEventListener('change', function () {
+
+wardInput.value =
+    this.value;
+
+wardNameInput.value =
+    this.options[
+        this.selectedIndex
+    ].text;
+});
+
+    registerForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        clearErrors();
+        statusBox.hidden = true;
+        submitBtn.disabled = true;
+
+        if (!provinceInput.value) {
+            showStatus(
+                "Vui lòng chọn tỉnh/thành",
+                "error"
+            );
+            submitBtn.disabled = false;
+            return;
+        }
+
+        if (!wardInput.value) {
+            showStatus(
+                "Vui lòng chọn phường/xã",
+                "error"
+            );
+            submitBtn.disabled = false;
+            return;
+        }
+
+        try {
+            const response = await fetch(registerForm.action, {
+                method: "POST",
+                body: new FormData(registerForm),
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showStatus(data.message, "success");
+                setTimeout(() => {
+                    window.location.href = data.redirect_url || "/";
+                }, 700);
+                return;
+            }
+
+            showStatus(data.message || "Đăng ký chưa thành công.", "error");
+            showErrors(data.errors);
+        } catch (error) {
+            showStatus("Không thể gửi đăng ký lúc này. Vui lòng thử lại sau.", "error");
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

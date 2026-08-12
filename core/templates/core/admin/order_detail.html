@@ -1,0 +1,166 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_topbar_actions %}
+<a href="{% url 'core:admin_orders' %}" class="admin-ghost-btn">
+    <i class="bi bi-arrow-left"></i>
+    Quay lại danh sách
+</a>
+{% endblock %}
+
+{% block admin_content %}
+{% if status_updated %}
+<div class="admin-alert success">
+    <i class="bi bi-check-circle"></i>
+    <span>Cập nhật trạng thái thành công</span>
+</div>
+{% endif %}
+
+{% if payment_updated %}
+<div class="admin-alert success">
+    <i class="bi bi-credit-card-2-front"></i>
+    <span>Cập nhật trạng thái thanh toán thành công</span>
+</div>
+{% endif %}
+
+{% if invalid_transition %}
+<div class="admin-alert danger">
+    <i class="bi bi-exclamation-triangle"></i>
+    <span>Không thể chuyển trạng thái đơn hàng theo quy tắc nghiệp vụ hiện tại.</span>
+</div>
+{% endif %}
+
+<div class="admin-orders-detail-layout">
+    <section class="admin-panel admin-panel-wide">
+        <div class="admin-panel-header">
+            <div>
+                <span class="admin-section-eyebrow">Đơn hàng</span>
+                <h3>{{ order_detail.order_code }}</h3>
+                <p>Tạo lúc {{ order_detail.created_at }}</p>
+            </div>
+            <div class="admin-order-detail-badges">
+                <span class="status-badge {{ order_detail.status.badge_class }}">{{ order_detail.status.label }}</span>
+                <span class="status-badge {{ order_detail.payment_status.badge_class }}">{{ order_detail.payment_status.label }}</span>
+            </div>
+        </div>
+
+        <div class="admin-order-detail-grid">
+            <article class="admin-order-info-card">
+                <span class="admin-section-eyebrow">Thông tin khách hàng</span>
+                <div class="admin-order-info-list">
+                    <div><strong>Họ tên</strong><span>{{ order_detail.receiver_name }}</span></div>
+                    <div><strong>Email</strong><span>{{ order_detail.receiver_email }}</span></div>
+                    <div><strong>SĐT</strong><span>{{ order_detail.receiver_phone }}</span></div>
+                    <div><strong>Địa chỉ giao hàng</strong><span>{{ order_detail.shipping_address }}</span></div>
+                </div>
+            </article>
+
+            <article class="admin-order-info-card">
+                <span class="admin-section-eyebrow">Thông tin đơn hàng</span>
+                <div class="admin-order-info-list">
+                    <div><strong>Mã đơn</strong><span>{{ order_detail.order_code }}</span></div>
+                    <div><strong>Ngày tạo</strong><span>{{ order_detail.created_at }}</span></div>
+                    <div><strong>Thanh toán</strong><span>{{ order_detail.payment_method }}</span></div>
+                    <div><strong>Tổng tiền</strong><span>{{ order_detail.total_price }}</span></div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="admin-panel">
+        <div class="admin-panel-header compact">
+            <div>
+                <h3>Cập nhật trạng thái đơn hàng</h3>
+                <p>Bạn có chắc muốn cập nhật trạng thái đơn hàng?</p>
+            </div>
+        </div>
+
+        {% if allowed_status_transitions %}
+        <form method="post" action="{% url 'core:admin_order_update_status' order_detail.id %}" onsubmit="return confirm('Bạn có chắc muốn cập nhật trạng thái đơn hàng?');">
+            {% csrf_token %}
+            <div class="admin-inline-form">
+                <select name="status" class="admin-form-control">
+                    {% for option in allowed_status_transitions %}
+                    <option value="{{ option.value }}">{{ option.label }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="admin-primary-btn">Cập nhật trạng thái</button>
+            </div>
+        </form>
+        {% else %}
+        <div class="admin-empty-card">Đơn hàng này không còn trạng thái hợp lệ nào để chuyển tiếp.</div>
+        {% endif %}
+    </section>
+
+    <section class="admin-panel">
+        <div class="admin-panel-header compact">
+            <div>
+                <h3>Cập nhật thanh toán</h3>
+                <p>Điều chỉnh trạng thái thanh toán theo tiến trình xử lý thực tế.</p>
+            </div>
+        </div>
+
+        <form method="post" action="{% url 'core:admin_order_update_payment' order_detail.id %}">
+            {% csrf_token %}
+            <div class="admin-inline-form">
+                <select name="payment_status" class="admin-form-control">
+                    {% for option in payment_status_options %}
+                    <option value="{{ option.value }}"{% if option.value == order_detail.payment_status.value %} selected{% endif %}>{{ option.label }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="admin-primary-btn">Cập nhật thanh toán</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="admin-panel admin-panel-wide">
+        <div class="admin-panel-header">
+            <div>
+                <h3>Sản phẩm trong đơn hàng</h3>
+                <p>Danh sách sản phẩm, giá tại thời điểm mua và thành tiền tương ứng.</p>
+            </div>
+        </div>
+
+        <div class="admin-order-item-list">
+            {% for item in order_items %}
+            <article class="admin-order-item-card">
+                <div class="admin-order-item-media">
+                    {% if item.image_url %}
+                    <img src="{{ item.image_url }}" alt="{{ item.product.name }}">
+                    {% else %}
+                    <div class="admin-order-item-placeholder">NO IMAGE</div>
+                    {% endif %}
+                </div>
+                <div class="admin-order-item-copy">
+                    <strong>{{ item.product.name }}</strong>
+                    {% if item.product_code %}<span style="font-family: monospace; letter-spacing: .04em; color: #9ca3af;">Mã SP: {{ item.product_code }}</span>{% endif %}
+                    <span>Giá tại thời điểm mua: {{ item.price }}</span>
+                    <span>Số lượng: {{ item.quantity }}</span>
+                </div>
+                <div class="admin-order-item-total">{{ item.line_total }}</div>
+            </article>
+            {% empty %}
+            <div class="admin-empty-card">Đơn hàng chưa có sản phẩm nào để hiển thị.</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="admin-panel">
+        <div class="admin-panel-header compact">
+            <div>
+                <h3>Tổng kết đơn hàng</h3>
+                <p>Tóm tắt số lượng sản phẩm và tổng giá trị thanh toán.</p>
+            </div>
+        </div>
+        <div class="admin-order-summary-stack">
+            <div class="admin-order-summary-item">
+                <strong>Tổng sản phẩm</strong>
+                <span>{{ order_summary.total_products }}</span>
+            </div>
+            <div class="admin-order-summary-item">
+                <strong>Tổng tiền đơn hàng</strong>
+                <span>{{ order_summary.total_price }}</span>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

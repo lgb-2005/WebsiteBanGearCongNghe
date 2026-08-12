@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Kết quả tìm kiếm - TechGear{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'products/css/search_results.css' %}">
+    <link rel="stylesheet" href="{% static 'products/css/listing.css' %}">
+{% endblock %}
+
+{% block content %}
+    {% include 'products/_listing_content.html' with breadcrumb_title='Kết quả tìm kiếm' hero_eyebrow='Tìm kiếm sản phẩm' hero_stat_label='Sản phẩm phù hợp' toolbar_description='Sử dụng bộ lọc để thu hẹp kết quả tìm kiếm' empty_title='Không tìm thấy sản phẩm phù hợp' page_modifier_class='search-results-page' hero_modifier_class='search-results-hero' hero_stat_modifier_class='search-results-hero-stat' empty_state_modifier_class='search-results-empty-state' %}
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/category_filter.js' %}"></script>
+{% endblock %}

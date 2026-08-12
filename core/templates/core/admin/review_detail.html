@@ -1,0 +1,98 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_content %}
+<div style="max-width:700px;">
+    <div style="margin-bottom:20px;">
+        <a href="{% url 'core:admin_reviews' %}" class="admin-ghost-btn" style="display:inline-flex;align-items:center;gap:6px;">
+            <i class="bi bi-arrow-left"></i> Quay lại danh sách
+        </a>
+    </div>
+
+    <section class="admin-panel">
+        <div class="admin-panel-header">
+            <div>
+                <h3>Đánh giá #{{ review_detail.id }}</h3>
+                <p>Chi tiết nội dung và thông tin đánh giá sản phẩm.</p>
+            </div>
+            <div>
+                {% if review_detail.is_visible %}
+                    <span class="status-badge success">Đang hiển thị</span>
+                {% else %}
+                    <span class="status-badge danger">Đã ẩn</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div style="display:grid;gap:16px;padding:4px 0;">
+            <div style="display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;border-bottom:1px solid #f3f4f6;padding-bottom:12px;">
+                <span class="admin-field-hint" style="font-weight:600;">ID đánh giá</span>
+                <span>#{{ review_detail.id }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;border-bottom:1px solid #f3f4f6;padding-bottom:12px;">
+                <span class="admin-field-hint" style="font-weight:600;">Sản phẩm</span>
+                <div>
+                    <strong>{{ review_detail.product.name }}</strong>
+                    <a href="{% url 'products:product_detail' review_detail.product.slug %}" target="_blank"
+                       style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#6b7280;margin-left:8px;">
+                        <i class="bi bi-box-arrow-up-right"></i> Xem trang sản phẩm
+                    </a>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;border-bottom:1px solid #f3f4f6;padding-bottom:12px;">
+                <span class="admin-field-hint" style="font-weight:600;">Khách hàng</span>
+                <span>{{ review_detail.user_name }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;border-bottom:1px solid #f3f4f6;padding-bottom:12px;">
+                <span class="admin-field-hint" style="font-weight:600;">Email</span>
+                <span>{{ review_detail.user_email }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;border-bottom:1px solid #f3f4f6;padding-bottom:12px;">
+                <span class="admin-field-hint" style="font-weight:600;">Số điện thoại</span>
+                <span>{{ review_detail.user_phone|default:"—" }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;border-bottom:1px solid #f3f4f6;padding-bottom:12px;">
+                <span class="admin-field-hint" style="font-weight:600;">Số sao</span>
+                <span>
+                    <span style="color:#f59e0b;font-size:18px;">
+                        {% for i in "12345" %}{% if forloop.counter <= review_detail.rating %}★{% else %}☆{% endif %}{% endfor %}
+                    </span>
+                    <span style="font-size:13px;color:#6b7280;margin-left:6px;">{{ review_detail.rating }}/5</span>
+                </span>
+            </div>
+            <div style="display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;border-bottom:1px solid #f3f4f6;padding-bottom:12px;">
+                <span class="admin-field-hint" style="font-weight:600;">Nội dung</span>
+                <span style="line-height:1.65;white-space:pre-wrap;">{{ review_detail.comment|default:"—" }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;border-bottom:1px solid #f3f4f6;padding-bottom:12px;">
+                <span class="admin-field-hint" style="font-weight:600;">Ngày tạo</span>
+                <span>{{ review_detail.created_at }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;">
+                <span class="admin-field-hint" style="font-weight:600;">Trạng thái</span>
+                <span>
+                    {% if review_detail.is_visible %}
+                        <span class="status-badge success">Đang hiển thị</span>
+                    {% else %}
+                        <span class="status-badge danger">Đã ẩn</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <div style="margin-top:28px;display:flex;gap:10px;flex-wrap:wrap;">
+            <form method="post" action="{% url 'core:admin_review_toggle' review_detail.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit" class="admin-primary-btn {% if review_detail.is_visible %}danger{% endif %}">
+                    {% if review_detail.is_visible %}
+                        <i class="bi bi-eye-slash"></i> Ẩn đánh giá này
+                    {% else %}
+                        <i class="bi bi-eye"></i> Hiện lại đánh giá này
+                    {% endif %}
+                </button>
+            </form>
+            <a href="{% url 'core:admin_reviews' %}" class="admin-ghost-btn">Quay lại</a>
+        </div>
+    </section>
+</div>
+{% endblock %}

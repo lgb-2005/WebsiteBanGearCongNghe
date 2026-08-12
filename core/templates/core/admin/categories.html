@@ -1,0 +1,129 @@
+{% extends 'core/admin/base.html' %}
+
+{% block admin_topbar_actions %}
+{% if editing_category %}
+    <a href="{% url 'core:admin_categories' %}" class="admin-ghost-btn">
+        <i class="bi bi-arrow-counterclockwise"></i>
+        Tạo mới danh mục
+    </a>
+{% endif %}
+<a href="#category-form" class="admin-primary-btn">
+    <i class="bi bi-diagram-3"></i>
+    {{ editing_category|yesno:"Cập nhật danh mục,Thêm danh mục" }}
+</a>
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-panel admin-panel-large">
+    <div class="admin-products-layout admin-brands-layout">
+        <div class="admin-product-form-card" id="category-form">
+            <div class="admin-product-form-head">
+                <div>
+                    <span class="admin-section-eyebrow">Biểu mẫu danh mục</span>
+                    <h4>{{ editing_category|yesno:"Cập nhật danh mục,Tạo danh mục mới" }}</h4>
+                </div>
+                {% if editing_category %}
+                    <a href="{% url 'core:admin_categories' %}" class="admin-form-cancel">Hủy chỉnh sửa</a>
+                {% endif %}
+            </div>
+
+            <form method="post" action="{% if editing_category %}{% url 'core:admin_category_update' editing_category.id %}{% else %}{% url 'core:admin_category_create' %}{% endif %}" class="admin-product-form">
+                {% csrf_token %}
+
+                {% if category_form.non_field_errors %}
+                    <div class="admin-form-errors">{{ category_form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="admin-form-grid admin-brand-form-grid">
+                    <div class="admin-form-field full-width">
+                        <label for="{{ category_form.name.id_for_label }}">Tên danh mục</label>
+                        {{ category_form.name }}
+                        <div class="admin-field-error">{{ category_form.name.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field full-width">
+                        <label for="{{ category_form.slug.id_for_label }}">Slug</label>
+                        {{ category_form.slug }}
+                        <div class="admin-field-error">{{ category_form.slug.errors }}</div>
+                    </div>
+
+                    <div class="admin-form-field full-width">
+                        <label for="{{ category_form.parent.id_for_label }}">Danh mục cha</label>
+                        {{ category_form.parent }}
+                        <div class="admin-field-error">{{ category_form.parent.errors }}</div>
+                    </div>
+                </div>
+
+                <div class="admin-form-actions">
+                    <button type="submit" class="admin-primary-btn">
+                        <i class="bi bi-check2-circle"></i>
+                        {{ editing_category|yesno:"Lưu cập nhật,Tạo danh mục" }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="admin-product-list-card">
+            <div class="admin-product-list-head">
+                <div>
+                    <span class="admin-section-eyebrow">Danh sách danh mục</span>
+                    <h4>Danh mục hiện có</h4>
+                </div>
+                <span class="admin-list-count">{{ categories|length }} danh mục</span>
+            </div>
+
+            <div class="admin-product-table-wrap">
+                <table class="admin-product-table admin-brand-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên danh mục</th>
+                            <th>Slug</th>
+                            <th>Danh mục cha</th>
+                            <th>Số sản phẩm</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                            <tr>
+                                <td>{{ category.id }}</td>
+                                <td>
+                                    <div class="admin-product-name-cell">
+                                        <strong>{{ category.name }}</strong>
+                                        <span>{{ category.children.count }} danh mục con</span>
+                                    </div>
+                                </td>
+                                <td>{{ category.slug }}</td>
+                                <td>{{ category.parent.name|default:"Danh mục gốc" }}</td>
+                                <td>
+                                    <span class="status-badge info">{{ category.product_total }}</span>
+                                </td>
+                                <td>
+                                    <div class="admin-table-actions">
+                                        <a href="{% url 'core:admin_categories' %}?edit_category={{ category.id }}#category-form" class="admin-table-btn edit">Sửa</a>
+                                        <form method="post" action="{% url 'core:admin_category_delete' category.id %}" onsubmit="return confirm('Bạn có chắc muốn xóa danh mục này?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="admin-table-btn delete">Xóa</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6">
+                                    <div class="admin-empty-state">
+                                        <i class="bi bi-diagram-3"></i>
+                                        <strong>Chưa có danh mục nào</strong>
+                                        <span>Hãy tạo danh mục đầu tiên để phân loại sản phẩm.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

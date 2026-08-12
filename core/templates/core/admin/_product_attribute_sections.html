@@ -1,0 +1,34 @@
+{% if dynamic_attribute_sections %}
+{% for section in dynamic_attribute_sections %}
+<div class="admin-form-field full-width" data-dynamic-attribute-section data-group-id="{{ section.group.id }}" data-filter-type="{{ section.group.filter_type }}" data-field-name="{{ section.select_field.html_name }}">
+    <label for="{{ section.select_field.id_for_label }}">{{ section.select_field.label }}</label>
+    <div data-attribute-options-field>
+        {{ section.select_field }}
+    </div>
+    <div class="admin-field-error">{{ section.select_field.errors }}</div>
+    <div class="admin-field-hint">Nếu chưa có giá trị phù hợp, bạn có thể thêm nhanh ngay bên dưới.</div>
+    <div class="admin-attribute-create-box">
+        <label for="{{ section.custom_field.id_for_label }}">{{ section.custom_field.label }}</label>
+        <div class="admin-attribute-create-row">
+            <div class="admin-attribute-create-input">
+                {{ section.custom_field }}
+            </div>
+            <button type="button" class="admin-primary-btn" data-attribute-create-button>
+                <i class="bi bi-plus-circle"></i>
+                Thêm
+            </button>
+        </div>
+        <div class="admin-field-error">{{ section.custom_field.errors }}</div>
+        <div class="admin-field-hint" data-attribute-create-feedback></div>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="admin-empty-inline-state">
+    <i class="bi bi-sliders2"></i>
+    <div>
+        <strong>Chưa có thuộc tính áp dụng</strong>
+        <span>Hãy chọn danh mục để hệ thống nạp các nhóm thuộc tính phù hợp.</span>
+    </div>
+</div>
+{% endif %}
