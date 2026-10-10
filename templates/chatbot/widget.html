@@ -1,0 +1,65 @@
+{% load static %}
+
+{% if CHATBOT_ENABLED %}
+<link rel="stylesheet" href="{% static 'css/chatbot.css' %}">
+
+{# Đảm bảo Django set csrf cookie trước khi JS gọi POST. #}
+<form style="display:none;">{% csrf_token %}</form>
+
+<div id="chatbot-widget" class="chatbot-widget">
+    <button id="chatbot-toggle" class="chatbot-toggle" aria-label="Mở chatbot">
+        <i class="bi bi-chat-dots-fill"></i>
+    </button>
+
+    <div id="chatbot-panel" class="chatbot-panel d-none">
+        <div class="chatbot-header">
+            <div class="chatbot-brand">
+                <span class="chatbot-brand-icon"><i class="bi bi-robot"></i></span>
+                <span>TechGear AI</span>
+            </div>
+            <div class="chatbot-header-actions">
+                <button id="chatbot-fullscreen" class="chatbot-header-btn" aria-label="Phóng to">
+                    <i class="bi bi-fullscreen"></i>
+                </button>
+                <button id="chatbot-close" class="chatbot-header-btn" aria-label="Đóng">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="chatbot-messages" class="chatbot-messages">
+            <div class="chatbot-welcome">
+                <strong>Xin chào! 👋</strong>
+                <p class="mb-0">Mình là trợ lý tư vấn sản phẩm TechGear. Bạn đang cần tìm gì?</p>
+            </div>
+        </div>
+
+        <div class="chatbot-quick-prompts">
+            <button class="quick-prompt" data-prompt="Tư vấn chuột gaming dưới 1 triệu">
+                <i class="bi bi-mouse2"></i> Chuột gaming &lt;1tr
+            </button>
+            <button class="quick-prompt" data-prompt="Tư vấn bàn phím cơ không dây">
+                <i class="bi bi-keyboard"></i> Bàn phím cơ
+            </button>
+            <button class="quick-prompt" data-prompt="Tai nghe chống ồn giá rẻ">
+                <i class="bi bi-headphones"></i> Tai nghe ANC
+            </button>
+        </div>
+
+        <div id="chatbot-typing" class="chatbot-typing d-none">
+            <span></span><span></span><span></span>
+        </div>
+
+        <form id="chatbot-form" class="chatbot-input">
+            <input type="text" id="chatbot-input" class="form-control" placeholder="Nhập câu hỏi..." autocomplete="off" maxlength="1000">
+            <button type="submit" class="btn-send" aria-label="Gửi">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </form>
+
+        <div id="chatbot-error" class="chatbot-error d-none"></div>
+    </div>
+</div>
+
+<script src="{% static 'js/chatbot.js' %}"></script>
+{% endif %}

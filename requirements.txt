@@ -1,0 +1,21 @@
+# Core
+Django==6.0.6
+mysqlclient==2.2.8
+pillow==12.2.0
+sqlparse==0.5.5
+asgiref==3.11.1
+tzdata==2026.2
+
+# Rich text sanitize (products rich text fields)
+bleach==6.4.0
+beautifulsoup4==4.15.0
+
+# Chatbot AI (Gemini)
+google-genai>=1.0.0
+
+# Test
+pytest==9.1.1
+pytest-django==4.12.0
+
+# Optional: rich text editor cho admin san pham
+# django-ckeditor-5

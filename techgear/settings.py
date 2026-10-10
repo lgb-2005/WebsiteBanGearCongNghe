@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'cart',
     'orders',
     'analytics',
+    'chatbot',
 ]
 
 CKEDITOR_AVAILABLE = importlib.util.find_spec('django_ckeditor_5') is not None
@@ -103,6 +104,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'cart.context_processors.cart_context',
                 'products.context_processors.nav_categories',
+                'chatbot.context_processors.chatbot_settings',
             ],
         },
     },
@@ -228,3 +230,37 @@ VNPAY_HASH_SECRET = os.environ.get('VNPAY_HASH_SECRET', '')
 VNPAY_URL = os.environ.get('VNPAY_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html')
 VNPAY_RETURN_URL = os.environ.get('VNPAY_RETURN_URL', 'http://127.0.0.1:8000/orders/payment/vnpay/return/')
 VNPAY_IPN_URL = os.environ.get('VNPAY_IPN_URL', 'http://127.0.0.1:8000/orders/payment/vnpay/ipn/')
+
+# Cache (dùng cho chatbot tool cache + rate limit)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'techgear-default',
+        'TIMEOUT': 300,
+        'OPTIONS': {
+            'MAX_ENTRIES': 5000,
+        },
+    }
+}
+
+
+def _env_int(name, default):
+    try:
+        return int(os.environ.get(name, '').strip())
+    except (TypeError, ValueError):
+        return default
+
+
+# Chatbot AI
+CHATBOT_ENABLED = _env_bool('CHATBOT_ENABLED', default=True)
+CHATBOT_PROVIDER = os.environ.get('CHATBOT_PROVIDER', 'gemini').strip() or 'gemini'
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash').strip() or 'gemini-3.8-flash'
+
+CHATBOT_RATE_LIMIT_PER_HOUR = _env_int('CHATBOT_RATE_LIMIT_PER_HOUR', 20)
+CHATBOT_MAX_TOOL_ROUNDS = _env_int('CHATBOT_MAX_TOOL_ROUNDS', 3)
+CHATBOT_HISTORY_LIMIT = _env_int('CHATBOT_HISTORY_LIMIT', 10)
+CHATBOT_TIMEOUT_SECONDS = _env_int('CHATBOT_TIMEOUT_SECONDS', 20)
+CHATBOT_MAX_MESSAGE_LENGTH = _env_int('CHATBOT_MAX_MESSAGE_LENGTH', 1000)
+CHATBOT_MAX_SEARCH_LIMIT = _env_int('CHATBOT_MAX_SEARCH_LIMIT', 8)
+CHATBOT_MAX_CLARIFY_TURNS = _env_int('CHATBOT_MAX_CLARIFY_TURNS', 2)
