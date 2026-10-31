@@ -84,3 +84,9 @@ class CompareProductsTests(TestCase):
         e = make_product(category=self.keyboard, brand=self.brand, name='E', slug='e', price='1700000')
         payload = compare_products(['a', 'b', 'c', 'd', 'e'])
         self.assertEqual(len(payload['products']), 4)
+
+    def test_compare_three_products_num_queries_at_most_five(self):
+        cache.clear()
+        with self.assertNumQueries(4):
+            payload = compare_products(['a', 'b', 'c'])
+        self.assertEqual(len(payload['products']), 3)

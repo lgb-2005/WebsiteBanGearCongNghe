@@ -5,6 +5,8 @@ Không thể làm việc này bằng unit test vì test chạy trên DB rỗng.
     python manage.py chatbot_check_aliases
 """
 
+import sys
+
 from django.core.management.base import BaseCommand
 
 from chatbot.intent.aliases import (
@@ -22,6 +24,8 @@ class Command(BaseCommand):
     help = 'Kiểm tra mọi slug trong aliases.py có tồn tại trong DB hay không'
 
     def handle(self, *args, **options):
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
         existing_pairs = set(
             AttributeValue.objects.filter(
                 is_active=True,

@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.db.models import DecimalField
 from django.db.models.functions import Coalesce
 
@@ -7,6 +8,7 @@ from products.models import Product
 
 MAX_COMPARE_PRODUCTS = 4
 MIN_COMPARE_PRODUCTS = 2
+_COMPARE_CACHE_TTL = 600
 
 
 def _base_queryset():
@@ -40,6 +42,10 @@ def compare_products(slugs, ctx=None):
         }
 
     cleaned_slugs = cleaned_slugs[:MAX_COMPARE_PRODUCTS]
+    cache_key = f'chatbot:tool:compare:v1:{",".join(cleaned_slugs)}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
 
     products = list(_base_queryset().with_related_data().filter(slug__in=cleaned_slugs))
     product_map = {product.slug: product for product in products}
@@ -111,7 +117,7 @@ def compare_products(slugs, ctx=None):
         'is_different': len({product_payload['final_price'] for product_payload in llm_products}) > 1,
     }
 
-    return {
+    payload = {
         'found': bool(ordered_products),
         'products': llm_products,
         'ui_products': ui_products,
@@ -120,3 +126,5 @@ def compare_products(slugs, ctx=None):
         'price_row': price_row,
         'missing_slugs': missing_slugs,
     }
+    cache.set(cache_key, payload, _COMPARE_CACHE_TTL)
+    return payload

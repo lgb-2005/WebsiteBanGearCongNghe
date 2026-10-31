@@ -182,3 +182,154 @@ def test_engine_resets_clarify_count_after_tool_call(category, product, ctx):
     assert response['products']
     conversation.refresh_from_db()
     assert conversation.clarify_count == 0
+
+
+@pytest.mark.django_db
+def test_engine_does_not_duplicate_user_message_in_provider_messages(category, ctx):
+    conversation = Conversation.objects.create(session_id='s8')
+    provider = MockProvider([
+        _text_response('Bạn cần tìm chuột trong tầm giá bao nhiêu?'),
+    ])
+    engine = ChatEngine(provider=provider)
+    engine.process('tư vấn chuột', conversation, ctx)
+
+    first_call_messages = provider.calls[0]['messages']
+    user_msgs = [m for m in first_call_messages if m.role == 'user']
+    assert len(user_msgs) == 1
+    assert user_msgs[0].content == 'tư vấn chuột'
+
+
+@pytest.mark.django_db
+def test_engine_includes_product_slugs_in_history_for_next_turn(category, brand, product, ctx):
+    conversation = Conversation.objects.create(session_id='s9')
+    provider_turn1 = MockProvider([
+        _search_response({'category_slug': 'chuot', 'limit': 5}),
+        _text_response('Mình gợi ý mẫu Chuột Test nhé.'),
+    ])
+    ChatEngine(provider=provider_turn1).process('tư vấn chuột dưới 1 triệu', conversation, ctx)
+
+    provider_turn2 = MockProvider([
+        _text_response('Chi tiết mẫu Chuột Test như sau.'),
+    ])
+    ChatEngine(provider=provider_turn2).process('chi tiết mẫu đầu tiên', conversation, ctx)
+
+    turn2_messages = provider_turn2.calls[0]['messages']
+    assistant_history = [m for m in turn2_messages if m.role == 'assistant']
+    assert len(assistant_history) == 1
+    assert 'slug: chuot-test' in assistant_history[0].content
+
+
+@pytest.mark.django_db
+def test_engine_accumulates_tokens_across_tool_rounds(category, brand, product, ctx):
+    conversation = Conversation.objects.create(session_id='s10')
+    round1 = LLMResult(
+        text='',
+        tool_calls=[{'name': 'search_products', 'arguments': {'category_slug': 'chuot'}}],
+        prompt_tokens=120,
+        completion_tokens=30,
+    )
+    round2 = LLMResult(
+        text='Đây là kết quả tư vấn.',
+        prompt_tokens=200,
+        completion_tokens=50,
+    )
+    engine = ChatEngine(provider=MockProvider([round1, round2]))
+    engine.process('chuột gaming dưới 1 triệu', conversation, ctx)
+
+    log = conversation.turn_logs.first()
+    assert log is not None
+    assert log.prompt_tokens == 320
+    assert log.completion_tokens == 80
+
+
+@pytest.mark.django_db
+def test_engine_strips_ui_fields_from_llm_tool_payload(category, brand, product, ctx):
+    conversation = Conversation.objects.create(session_id='s11')
+    provider = MockProvider([
+        _search_response({'category_slug': 'chuot', 'limit': 5}),
+        _text_response('Mình tìm thấy mẫu Chuột Test.'),
+    ])
+    response = ChatEngine(provider=provider).process('tư vấn chuột', conversation, ctx)
+
+    assert response['products']
+    assert response['products'][0]['slug'] == 'chuot-test'
+
+    round2_messages = provider.calls[1]['messages']
+    tool_msgs = [m for m in round2_messages if m.role == 'tool']
+    assert len(tool_msgs) == 1
+    assert 'ui_results' not in tool_msgs[0].tool_payload
+    assert 'results' in tool_msgs[0].tool_payload
+
+
+@pytest.mark.django_db
+def test_engine_extracts_relaxation_ui_results_when_no_exact_match(category, brand, product, ctx):
+    conversation = Conversation.objects.create(session_id='s12')
+    provider = MockProvider([
+        _search_response({'category_slug': 'chuot', 'price_max': 700000, 'limit': 5}),
+        _text_response('Không có mẫu dưới 700k, nhưng có mẫu 800k rất đáng cân nhắc.'),
+    ])
+    response = ChatEngine(provider=provider).process('chuột dưới 700k', conversation, ctx)
+
+    assert response['products']
+    assert response['products'][0]['slug'] == 'chuot-test'
+
+    round2_messages = provider.calls[1]['messages']
+    tool_msgs = [m for m in round2_messages if m.role == 'tool']
+    assert 'ui_results' not in (tool_msgs[0].tool_payload.get('relaxation') or {})
+
+
+def test_gemini_provider_retries_on_503_unavailable(monkeypatch):
+    from google.genai.errors import APIError
+    from chatbot.providers.gemini import GeminiProvider
+
+    provider = GeminiProvider(
+        api_key='test-key',
+        model='gemini-2.5-flash',
+        thinking_budget=0,
+        max_transient_retries=2,
+        transient_retry_delay=0,
+    )
+
+    calls = []
+
+    class DummyPart:
+        text = 'Phản hồi thành công sau khi retry 503.'
+        function_call = None
+
+    class DummyContent:
+        parts = [DummyPart()]
+
+    class DummyCandidate:
+        content = DummyContent()
+
+    class DummyResponse:
+        usage_metadata = None
+        candidates = [DummyCandidate()]
+
+    def fake_call_api(system_prompt, messages, tools):
+        calls.append(1)
+        if len(calls) == 1:
+            raise APIError(503, {'error': {'code': 503, 'message': 'This model is currently experiencing high demand.'}})
+        return DummyResponse()
+
+    monkeypatch.setattr(provider, '_call_api', fake_call_api)
+    result = provider.generate('system', [LLMMessage(role='user', content='hi')], [])
+
+    assert len(calls) == 2
+    assert 'thành công' in result.text
+
+
+@pytest.mark.django_db
+def test_engine_fast_path_answers_in_single_llm_round(category, brand, product, ctx):
+    conversation = Conversation.objects.create(session_id='s13')
+    provider = MockProvider([
+        _text_response('Mình tìm thấy mẫu **Chuột Test** (800.000đ) phù hợp với bạn.'),
+    ])
+    engine = ChatEngine(provider=provider, enable_fast_path=True)
+    response = engine.process('tư vấn chuột dưới 1tr5', conversation, ctx)
+
+    assert len(provider.calls) == 1
+    assert response['meta']['loop_rounds'] == 1
+    assert response['products']
+    assert response['products'][0]['slug'] == 'chuot-test'
+    assert 'chuot-test' in provider.calls[0]['messages'][-1].content

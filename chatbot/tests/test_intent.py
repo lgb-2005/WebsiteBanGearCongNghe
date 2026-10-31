@@ -81,6 +81,15 @@ class ParsePriceTests(SimpleTestCase):
     def test_khong_day_does_not_trigger_k_unit(self):
         self.assertEqual(parse_price('chuột không dây'), (None, None))
 
+    def test_shorthand_1tr5(self):
+        self.assertEqual(parse_price('bàn phím dưới 1tr5'), (None, 1_500_000))
+        self.assertEqual(parse_price('chuột từ 500k đến 1tr5'), (500_000, 1_500_000))
+
+    def test_shorthand_cu_and_ruoi(self):
+        self.assertEqual(parse_price('tai nghe tầm 2 củ'), (1_600_000, 2_400_000))
+        self.assertEqual(parse_price('chuột dưới 1 củ rưỡi'), (None, 1_500_000))
+        self.assertEqual(parse_price('không quá 800k'), (None, 800_000))
+
 
 class ResolveCategoryTests(SimpleTestCase):
     def test_keyboard(self):
@@ -216,6 +225,20 @@ class ResolveCombinedTests(SimpleTestCase):
         self.assertIn('wireless', result['attributes']['ket-noi'])
         self.assertEqual(result['attributes']['layout'], ['tkl', '65', '75'])
         self.assertEqual((result['price_min'], result['price_max']), (1_000_000, 2_000_000))
+
+    def test_negated_attribute_is_ignored(self):
+        result = resolve_aliases('bàn phím cơ không cần led, không thích màu hồng')
+
+        self.assertEqual(result['category_slug'], 'ban-phim')
+        self.assertNotIn('den-led', result['attributes'])
+        self.assertNotIn('mau-sac', result['attributes'])
+
+    def test_wireless_keyword_with_khong_still_matches(self):
+        result = resolve_aliases('chuột không dây')
+
+        self.assertEqual(result['category_slug'], 'chuot')
+        self.assertIn('wireless', result['attributes']['ket-noi'])
+        self.assertNotIn('usb', result['attributes']['ket-noi'])
 
 
 class AliasIntegrityTests(SimpleTestCase):

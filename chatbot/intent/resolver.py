@@ -54,10 +54,28 @@ def _keyword_pattern(keyword):
     )
 
 
-def _find(normalized_text, keyword):
+_NEGATION_PREFIX_RE = re.compile(
+    r'(?:^|\s)(?:khong|ko|chua|chang|chan|ghet|tranh|tru|bo|dung)\s+'
+    r'(?:(?:can|thich|muon|co|dung|lay|chon|ua|xai)\s+)?$'
+)
+
+
+def _is_negated(normalized_text, match_start, normalized_keyword):
+    if normalized_keyword.startswith(('khong ', 'chong ')):
+        return False
+    prefix = normalized_text[max(0, match_start - 30):match_start]
+    return bool(_NEGATION_PREFIX_RE.search(prefix))
+
+
+def _find(normalized_text, keyword, ignore_negated=False):
     """Trả vị trí match đầu tiên theo ranh giới từ, hoặc None."""
-    match = _keyword_pattern(normalize(keyword)).search(normalized_text)
-    return match.start() if match else None
+    normalized_kw = normalize(keyword)
+    for match in _keyword_pattern(normalized_kw).finditer(normalized_text):
+        pos = match.start()
+        if ignore_negated and _is_negated(normalized_text, pos, normalized_kw):
+            continue
+        return pos
+    return None
 
 
 # --- Parser giá tiếng Việt ----------------------------------------------------
@@ -65,12 +83,28 @@ def _find(normalized_text, keyword):
 _UNIT_MULTIPLIERS = (
     ('trieu', 1_000_000),
     ('tr', 1_000_000),
+    ('cu', 1_000_000),
+    ('m', 1_000_000),
+    ('lit', 100_000),
     ('nghin', 1_000),
     ('ngan', 1_000),
     ('k', 1_000),
 )
 
-_AMOUNT = r'(\d+(?:[.,]\d+)*)\s*(?:(trieu|tr|nghin|ngan|k)(?![0-9a-z]))?'
+_AMOUNT = r'(\d+(?:[.,]\d+)*)\s*(?:(trieu|tr|cu|m|lit|nghin|ngan|k)(?![0-9a-z]))?'
+
+_SHORTHAND_HALF_RE = re.compile(
+    r'(?<![0-9a-z])(\d+)\s*(?:trieu|tr|cu|m)\s*ruoi(?![0-9a-z])'
+)
+_SHORTHAND_DECIMAL_RE = re.compile(
+    r'(?<![0-9a-z])(\d+)\s*(?:trieu|tr|cu|m)\s*(\d{1,2})(?![0-9a-z])'
+)
+
+
+def _normalize_shorthand_prices(normalized_text):
+    text = _SHORTHAND_HALF_RE.sub(r'\1.5 trieu', normalized_text)
+    text = _SHORTHAND_DECIMAL_RE.sub(r'\1.\2 trieu', text)
+    return text
 
 # Không ai đặt ngân sách dưới mốc này; số nhỏ hơn mà không kèm đơn vị thì
 # gần như chắc chắn là DPI / số nút / số phím, không phải giá.
@@ -126,6 +160,7 @@ def parse_price(text):
     normalized_text = normalize(text)
     if not normalized_text:
         return None, None
+    normalized_text = _normalize_shorthand_prices(normalized_text)
 
     range_match = _RANGE_RE.search(normalized_text)
     if range_match:
@@ -180,7 +215,7 @@ def _match_attribute_aliases(normalized_text):
     for alias_key, spec in ATTRIBUTE_ALIASES.items():
         best = None
         for keyword in spec['keywords']:
-            position = _find(normalized_text, keyword)
+            position = _find(normalized_text, keyword, ignore_negated=True)
             if position is None:
                 continue
             candidate = (position, -len(keyword))
@@ -221,7 +256,7 @@ def _resolve_conflicts(matches):
 def _match_keywords(normalized_text):
     found = []
     for alias_key, keywords in KEYWORD_ALIASES.items():
-        if any(_find(normalized_text, keyword) is not None for keyword in keywords):
+        if any(_find(normalized_text, keyword, ignore_negated=True) is not None for keyword in keywords):
             found.append(alias_key)
     return found
 

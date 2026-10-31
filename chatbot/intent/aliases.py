@@ -36,7 +36,7 @@ CATEGORY_ALIASES = {
 ATTRIBUTE_ALIASES = {
     'wireless': {
         'keywords': ['khong day', 'wireless', 'bluetooth', '2.4ghz', '24ghz', 'khong can day'],
-        'attributes': {'ket-noi': ['wireless', '24ghz', '24ghz-wireless', 'bluetooth']},
+        'attributes': {'ket-noi': ['wireless', '24ghz-wireless', 'bluetooth']},
     },
     'wired': {
         'keywords': ['co day', 'wired', 'cam day', 'usb'],
@@ -202,7 +202,6 @@ USABLE_GROUPS = {
     'kich-thuoc',
     'polling-rate',
     'so-nut',
-    'thoi-gian-bao-hanh',
 }
 
 # 3. Khai báo boolean nhưng DB chứa cả text rác -> chỉ cho phép co/khong (T13).

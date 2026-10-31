@@ -159,3 +159,9 @@ class CatalogToolTests(TestCase):
         payload = get_product_detail(slug='chuot-logitech-g-pro')
         self.assertFalse(payload['found'])
         self.assertEqual(payload['ui_suggestions'][0]['slug'], 'chuot-logitech-g-pro-wireless')
+
+    def test_get_product_detail_num_queries_bounded(self):
+        cache.clear()
+        with self.assertNumQueries(4):
+            payload = get_product_detail(slug='chuot-logitech-g-pro-wireless')
+        self.assertTrue(payload['found'])

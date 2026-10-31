@@ -120,7 +120,16 @@ def _convert_messages(messages: list[LLMMessage]) -> list:
 
 
 class GeminiProvider(LLMProvider):
-    def __init__(self, api_key=None, model=None, retry_quota=False, max_quota_retries=3):
+    def __init__(
+        self,
+        api_key=None,
+        model=None,
+        retry_quota=False,
+        max_quota_retries=3,
+        thinking_budget=None,
+        max_transient_retries=2,
+        transient_retry_delay=1.5,
+    ):
         self.api_key = api_key or settings.GEMINI_API_KEY
         self.model = model or settings.GEMINI_MODEL or 'gemini-3.5-flash'
         if not self.api_key:
@@ -128,17 +137,52 @@ class GeminiProvider(LLMProvider):
         self.client = genai.Client(api_key=self.api_key)
         self.retry_quota = retry_quota
         self.max_quota_retries = max_quota_retries
+        if thinking_budget is None:
+            thinking_budget = getattr(settings, 'CHATBOT_THINKING_BUDGET', 0)
+        self.thinking_budget = thinking_budget
+        self.max_transient_retries = max_transient_retries
+        self.transient_retry_delay = transient_retry_delay
 
     def _call_api(self, system_prompt: str, messages: list[LLMMessage], tools: list):
-        config = types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            tools=_convert_tools(tools),
-        )
-        return self.client.models.generate_content(
-            model=self.model,
-            contents=_convert_messages(messages),
-            config=config,
-        )
+        config_kwargs = {
+            'system_instruction': system_prompt,
+            'tools': _convert_tools(tools),
+        }
+        if self.thinking_budget is not None and self.thinking_budget >= 0:
+            config_kwargs['thinking_config'] = types.ThinkingConfig(
+                thinking_budget=self.thinking_budget,
+            )
+
+        contents = _convert_messages(messages)
+        try:
+            return self.client.models.generate_content(
+                model=self.model,
+                contents=contents,
+                config=types.GenerateContentConfig(**config_kwargs),
+            )
+        except APIError as exc:
+            if (
+                'thinking_config' in config_kwargs
+                and getattr(exc, 'code', None) == 400
+                and 'thinking' in str(exc).lower()
+            ):
+                logger.info('Model %s does not support thinking_budget; retrying without thinking_config', self.model)
+                self.thinking_budget = -1
+                config_kwargs.pop('thinking_config', None)
+                return self.client.models.generate_content(
+                    model=self.model,
+                    contents=contents,
+                    config=types.GenerateContentConfig(**config_kwargs),
+                )
+            raise
+
+    @staticmethod
+    def _is_transient_error(exc: APIError) -> bool:
+        code = getattr(exc, 'code', None)
+        if code in (500, 502, 503, 504):
+            return True
+        msg = str(exc).lower()
+        return any(token in msg for token in ('unavailable', 'high demand', 'overloaded'))
 
     @staticmethod
     def _extract_retry_after(exc):
@@ -159,8 +203,8 @@ class GeminiProvider(LLMProvider):
 
     def generate(self, system_prompt: str, messages: list[LLMMessage], tools: list) -> LLMResult:
         start = time.time()
-        last_error = None
         quota_attempt = 0
+        transient_attempt = 0
 
         while True:
             try:
@@ -168,7 +212,6 @@ class GeminiProvider(LLMProvider):
                 break
             except APIError as exc:
                 if getattr(exc, 'code', None) == 429 or 'quota' in str(exc).lower():
-                    last_error = exc
                     if self.retry_quota and quota_attempt < self.max_quota_retries:
                         quota_attempt += 1
                         retry_after = self._extract_retry_after(exc)
@@ -176,6 +219,19 @@ class GeminiProvider(LLMProvider):
                         time.sleep(retry_after)
                         continue
                     raise QuotaExceeded(str(exc), original=exc) from exc
+                if self._is_transient_error(exc) and transient_attempt < self.max_transient_retries:
+                    transient_attempt += 1
+                    wait_seconds = self.transient_retry_delay * transient_attempt
+                    logger.warning(
+                        'Gemini transient error (%s). Retry %d/%d after %.1fs',
+                        getattr(exc, 'code', '503'),
+                        transient_attempt,
+                        self.max_transient_retries,
+                        wait_seconds,
+                    )
+                    if wait_seconds > 0:
+                        time.sleep(wait_seconds)
+                    continue
                 logger.warning('Gemini API error: %s', exc)
                 raise ProviderError(str(exc), original=exc) from exc
             except TimeoutError as exc:

@@ -7,12 +7,14 @@
     const TOGGLE = document.getElementById('chatbot-toggle');
     const PANEL = document.getElementById('chatbot-panel');
     const CLOSE = document.getElementById('chatbot-close');
+    const RESET = document.getElementById('chatbot-reset');
     const FULLSCREEN = document.getElementById('chatbot-fullscreen');
     const MESSAGES = document.getElementById('chatbot-messages');
     const FORM = document.getElementById('chatbot-form');
     const INPUT = document.getElementById('chatbot-input');
     const TYPING = document.getElementById('chatbot-typing');
     const ERROR = document.getElementById('chatbot-error');
+    const INITIAL_WELCOME_HTML = MESSAGES ? MESSAGES.innerHTML : '';
 
     const API_MESSAGE = '/chatbot/api/message/';
     const API_HISTORY = '/chatbot/api/history/';
@@ -20,6 +22,7 @@
 
     let conversationId = localStorage.getItem('chatbot_conversation_id') || null;
     let isOpen = false;
+    let historyLoaded = false;
 
     function getCookie(name) {
         const value = `; ${document.cookie}`;
@@ -55,18 +58,92 @@
         return `${num.toLocaleString('vi-VN')}đ`;
     }
 
-    function renderMarkdown(text) {
-        if (!text) return '';
-        let html = text
+    function escapeHtml(str) {
+        return String(str)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
-            .replace(/^\s*[-*]\s+(.+)$/gm, '<li>$1</li>')
-            .replace(/(<li>.+<\/li>\n?)+/g, '<ul>$&</ul>')
-            .replace(/\n/g, '<br>');
+            .replace(/"/g, '&quot;');
+    }
+
+    function formatInline(str) {
+        let html = escapeHtml(str);
+        html = html.replace(
+            /\[([^\]]+)\]\(((?:\/|https?:\/\/)[^\s)]+)\)/g,
+            '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+        );
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+        html = html.replace(
+            /\b(\d{1,3}(?:[.,]\d{3})+\s*(?:đ|vnđ|vnd)|\d+(?:[.,]\d+)?\s*triệu\s*đ?)/gi,
+            '<span class="chatbot-price-inline">$1</span>'
+        );
         return html;
+    }
+
+    function renderMarkdown(text) {
+        if (!text) return '';
+        const lines = String(text).replace(/\r\n/g, '\n').split('\n');
+        const blocks = [];
+        let listType = null;
+        let listItems = [];
+        let paragraphLines = [];
+
+        function flushList() {
+            if (!listType) return;
+            blocks.push(`<${listType} class="chatbot-list">${listItems.join('')}</${listType}>`);
+            listType = null;
+            listItems = [];
+        }
+
+        function flushParagraph() {
+            if (!paragraphLines.length) return;
+            blocks.push(`<p class="chatbot-paragraph">${paragraphLines.join('<br>')}</p>`);
+            paragraphLines = [];
+        }
+
+        lines.forEach(rawLine => {
+            const line = rawLine.trim();
+            if (!line) {
+                flushList();
+                flushParagraph();
+                return;
+            }
+
+            const headingMatch = line.match(/^#{1,4}\s+(.+)$/);
+            if (headingMatch) {
+                flushList();
+                flushParagraph();
+                blocks.push(`<div class="chatbot-heading">${formatInline(headingMatch[1])}</div>`);
+                return;
+            }
+
+            const ulMatch = line.match(/^[-*•]\s+(.+)$/);
+            if (ulMatch) {
+                flushParagraph();
+                if (listType && listType !== 'ul') flushList();
+                listType = 'ul';
+                listItems.push(`<li>${formatInline(ulMatch[1])}</li>`);
+                return;
+            }
+
+            const olMatch = line.match(/^\d+[.)]\s+(.+)$/);
+            if (olMatch) {
+                flushParagraph();
+                if (listType && listType !== 'ol') flushList();
+                listType = 'ol';
+                listItems.push(`<li>${formatInline(olMatch[1])}</li>`);
+                return;
+            }
+
+            flushList();
+            paragraphLines.push(formatInline(line));
+        });
+
+        flushList();
+        flushParagraph();
+        return blocks.join('');
     }
 
     function createMessageElement(role, html, extraClass = '') {
@@ -139,17 +216,17 @@
         let sameRows = '';
         if (comparison.rows_same && comparison.rows_same.length) {
             sameRows = comparison.rows_same.map(row => `
-                <tr>
-                    <td>${row.group_name}</td>
-                    ${row.values.map(v => `<td>${v}</td>`).join('')}
+                <tr class="same-row">
+                    <td>${escapeHtml(row.group_name)}</td>
+                    ${row.values.map(v => `<td>${escapeHtml(v)}</td>`).join('')}
                 </tr>
             `).join('');
         }
 
         const diffRows = rows.map(row => `
-            <tr>
-                <td>${row.name}</td>
-                ${row.values.map(v => `<td class="${row.isDiff ? 'diff' : ''}">${v}</td>`).join('')}
+            <tr class="diff-row">
+                <td>${escapeHtml(row.name)}</td>
+                ${row.values.map(v => `<td class="${row.isDiff ? 'diff' : ''}">${escapeHtml(v)}</td>`).join('')}
             </tr>
         `).join('');
 
@@ -158,11 +235,10 @@
             <div class="chatbot-compare-table-wrap">
                 <table class="chatbot-compare-table">
                     <thead>
-                        <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                        <tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>
                     </thead>
                     <tbody>
                         ${diffRows}
-                        <tr class="same-rows d-none">${sameRows ? '' : '<td colspan="' + (products.length + 1) + '"></td>'}</tr>
                         ${sameRows}
                     </tbody>
                 </table>
@@ -265,10 +341,13 @@
             });
             if (!response.ok) return;
             const data = await response.json();
-            MESSAGES.innerHTML = '';
-            data.messages.forEach(msg => {
-                appendMessage(msg.role, renderMarkdown(msg.content), msg.products, msg.comparison);
-            });
+            if (data.messages && data.messages.length) {
+                MESSAGES.innerHTML = '';
+                data.messages.forEach(msg => {
+                    appendMessage(msg.role, renderMarkdown(msg.content), msg.products, msg.comparison);
+                });
+            }
+            historyLoaded = true;
             scrollToBottom();
         } catch (err) {
             console.warn('Không load được lịch sử chatbot', err);
@@ -280,9 +359,20 @@
             const data = await postJSON(API_NEW, {});
             conversationId = data.conversation_id;
             localStorage.setItem('chatbot_conversation_id', conversationId);
+            historyLoaded = true;
         } catch (err) {
             console.error('Không tạo được conversation', err);
         }
+    }
+
+    async function resetConversation() {
+        localStorage.removeItem('chatbot_conversation_id');
+        conversationId = null;
+        historyLoaded = true;
+        MESSAGES.innerHTML = INITIAL_WELCOME_HTML;
+        setError('');
+        setTyping(false);
+        await createConversation();
     }
 
     function openPanel() {
@@ -290,7 +380,7 @@
         isOpen = true;
         if (!conversationId) {
             createConversation();
-        } else {
+        } else if (!historyLoaded) {
             loadHistory();
         }
     }
@@ -328,6 +418,9 @@
         if (isOpen) closePanel(); else openPanel();
     });
     CLOSE.addEventListener('click', closePanel);
+    if (RESET) {
+        RESET.addEventListener('click', resetConversation);
+    }
     FULLSCREEN.addEventListener('click', toggleFullscreen);
 
     FORM.addEventListener('submit', (event) => {
@@ -348,10 +441,6 @@
         const toggleCompare = event.target.closest('.chatbot-compare-toggle');
         if (toggleCompare) {
             const wrap = toggleCompare.closest('.chatbot-compare-table-wrap');
-            const sameRows = wrap.querySelectorAll('tbody tr:not(:first-child):not(.same-rows)');
-            // Simple toggle: show/hide rows after first (price + diffs)
-            const diffCount = wrap.querySelectorAll('thead th').length > 0 ? 1 : 0;
-            // More robust: toggle a class on tbody
             const tbody = wrap.querySelector('tbody');
             const expanded = tbody.classList.toggle('show-all');
             toggleCompare.textContent = expanded ? 'Thu gọn thông số' : 'Xem tất cả thông số';
@@ -385,12 +474,4 @@
                 });
         }
     });
-
-    // CSS class toggle helper for compare table
-    const style = document.createElement('style');
-    style.textContent = `
-        .chatbot-compare-table tbody:not(.show-all) tr:nth-child(n+${1 + 1}) { display: none; }
-        .chatbot-compare-table tbody.show-all tr { display: table-row; }
-    `;
-    document.head.appendChild(style);
 })();
