@@ -8,3 +8,14 @@ db.sqlite3
 *.log
 media/
 staticfiles/
+
+# Dataset & ML pipeline heavy artifacts
+dataset_example_trainModel/*.csv
+dataset_example_trainModel/*.gz
+dataset_example_trainModel/*.parquet
+*.parquet
+analytics/ml/artifacts/
+analytics/ml/artifacts/*.csv
+analytics/ml/artifacts/*.parquet
+.tmp_*.py
+
