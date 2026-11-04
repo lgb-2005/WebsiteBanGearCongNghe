@@ -13,6 +13,9 @@ beautifulsoup4==4.15.0
 # Chatbot AI (Gemini)
 google-genai>=1.0.0
 
+# Session-level analytics (CSV pipeline)
+pandas==3.1.0
+
 # Test
 pytest==9.1.1
 pytest-django==4.12.0

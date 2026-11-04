@@ -19,3 +19,6 @@ analytics/ml/artifacts/*.csv
 analytics/ml/artifacts/*.parquet
 .tmp_*.py
 
+
+/.md_plan/
+/dataset_trainmodel/

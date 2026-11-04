@@ -26,7 +26,23 @@ def is_target_category(series: pd.Series) -> pd.Series:
     return mask
 
 
+def _identifier_values(series: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """Validate int64 identifiers as decimal text, without a float round trip."""
+    text = series.astype("string").str.strip()
+    canonical = text.str.lstrip("0").replace("", "0")
+    maximum = str(2**63 - 1)
+    valid = (
+        text.str.fullmatch(r"[0-9]+", na=False)
+        & ((canonical.str.len() < len(maximum))
+           | ((canonical.str.len() == len(maximum)) & (canonical <= maximum)))
+    ).fillna(False)
+    return canonical, valid
+
+
 def clean_event_chunk(chunk: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    missing = sorted(set(KAGGLE_CSV_COLUMNS) - set(chunk.columns))
+    if missing:
+        raise ValueError(f"Missing event columns: {', '.join(missing)}")
     total_rows = int(len(chunk))
     if total_rows == 0:
         return chunk.copy(), {
@@ -49,9 +65,11 @@ def clean_event_chunk(chunk: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         }
 
     target_df["price"] = pd.to_numeric(target_df["price"], errors="coerce")
-    target_df["product_id"] = pd.to_numeric(target_df["product_id"], errors="coerce")
-    target_df["category_id"] = pd.to_numeric(target_df["category_id"], errors="coerce")
-    target_df["user_id"] = pd.to_numeric(target_df["user_id"], errors="coerce")
+    id_mask = pd.Series(True, index=target_df.index)
+    for column in ("product_id", "category_id", "user_id"):
+        values, valid = _identifier_values(target_df[column])
+        target_df[column] = values
+        id_mask &= valid
 
     session_str = target_df["user_session"].fillna("").astype(str).str.strip()
     event_time_str = target_df["event_time"].fillna("").astype(str).str.strip()
@@ -64,15 +82,14 @@ def clean_event_chunk(chunk: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         & event_type_str.isin(VALID_KAGGLE_EVENT_TYPES)
         & target_df["price"].notna()
         & (target_df["price"] > 0)
-        & target_df["product_id"].notna()
-        & target_df["category_id"].notna()
-        & target_df["user_id"].notna()
+        & (target_df["price"] < float("inf"))
+        & id_mask
     )
 
     before_clean_len = int(len(target_df))
     cleaned_df = target_df.loc[valid_mask].copy()
 
-    parsed_time = pd.to_datetime(cleaned_df["event_time"], utc=True, errors="coerce")
+    parsed_time = pd.to_datetime(cleaned_df["event_time"], utc=True, format="mixed", errors="coerce")
     time_valid_mask = parsed_time.notna()
     cleaned_df = cleaned_df.loc[time_valid_mask].copy()
     parsed_time = parsed_time.loc[time_valid_mask]
@@ -80,7 +97,8 @@ def clean_event_chunk(chunk: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     dropped_invalid = before_clean_len - int(len(cleaned_df))
 
     if not cleaned_df.empty:
-        cleaned_df["event_time"] = parsed_time.dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+        # Preserve fractional seconds: rounding here changes the strict cutoff.
+        cleaned_df["event_time"] = parsed_time.astype("string")
         cleaned_df["event_type"] = cleaned_df["event_type"].astype(str).str.strip().str.lower()
         cleaned_df["product_id"] = cleaned_df["product_id"].astype("int64")
         cleaned_df["category_id"] = cleaned_df["category_id"].astype("int64")
@@ -107,6 +125,11 @@ def run_preprocessing(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     max_chunks: int | None = None,
 ) -> dict:
+    for name, value in (("chunk_size", chunk_size), ("max_chunks", max_chunks)):
+        if name == "max_chunks" and value is None:
+            continue
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise ValueError(f"{name} must be a positive integer")
     if isinstance(input_paths, (str, Path)):
         paths = [Path(input_paths)]
     else:
@@ -114,6 +137,16 @@ def run_preprocessing(
 
     output_path = Path(output_csv_path)
     meta_path = Path(meta_json_path)
+    resolved_paths = [path.resolve() for path in paths]
+    if not paths or len(set(resolved_paths)) != len(resolved_paths):
+        raise ValueError("Provide at least one distinct input CSV")
+    if output_path.resolve() == meta_path.resolve() or any(
+        path in (output_path.resolve(), meta_path.resolve()) for path in resolved_paths
+    ):
+        raise ValueError("Input, filtered CSV and metadata paths must be different")
+    for csv_path in paths:
+        if not csv_path.is_file():
+            raise FileNotFoundError(f"Không tìm thấy file CSV đầu vào: {csv_path}")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     meta_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -153,6 +186,9 @@ def run_preprocessing(
             dtype={
                 "event_time": "string",
                 "event_type": "string",
+                "product_id": "string",
+                "category_id": "string",
+                "user_id": "string",
                 "category_code": "string",
                 "brand": "string",
                 "user_session": "string",
