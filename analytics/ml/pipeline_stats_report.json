@@ -1,0 +1,821 @@
+{
+  "generated_at_utc": "2026-11-05 02:38:01 UTC",
+  "partial_run": false,
+  "data_filtering_funnel": {
+    "total_raw_rows": 109950743,
+    "dropped_non_target_category": 99482369,
+    "dropped_non_target_pct": 90.479,
+    "dropped_invalid_rows": 22095,
+    "dropped_invalid_pct": 0.0201,
+    "valid_filtered_rows": 10446279,
+    "retention_rate_pct": 9.5009,
+    "output_size_mb": 1418.31,
+    "elapsed_seconds": 528.75,
+    "input_files": [
+      "2019-Oct.csv",
+      "2019-Nov.csv"
+    ],
+    "per_file_stats": [
+      {
+        "file_name": "2019-Oct.csv",
+        "file_size_mb": 5406.01,
+        "chunks_processed": 85,
+        "total_raw_rows": 42448764,
+        "dropped_non_target_category": 38549873,
+        "dropped_invalid_rows": 4198,
+        "valid_filtered_rows": 3894693,
+        "elapsed_seconds": 207.44
+      },
+      {
+        "file_name": "2019-Nov.csv",
+        "file_size_mb": 8589.52,
+        "chunks_processed": 136,
+        "total_raw_rows": 67501979,
+        "dropped_non_target_category": 60932496,
+        "dropped_invalid_rows": 17897,
+        "valid_filtered_rows": 6551586,
+        "elapsed_seconds": 321.31
+      }
+    ],
+    "partial_run": false
+  },
+  "event_distribution": {
+    "view": {
+      "count": 9955865,
+      "pct": 95.3054
+    },
+    "cart": {
+      "count": 346188,
+      "pct": 3.314
+    },
+    "remove_from_cart": {
+      "count": 0,
+      "pct": 0.0
+    },
+    "purchase": {
+      "count": 144226,
+      "pct": 1.3806
+    }
+  },
+  "unique_products": 13532,
+  "unique_brands": 405,
+  "top_categories": {
+    "computers.notebook": 3310570,
+    "electronics.audio.headphone": 2915680,
+    "computers.desktop": 1108531,
+    "electronics.audio.subwoofer": 631725,
+    "computers.peripherals.printer": 373383,
+    "computers.peripherals.monitor": 316821,
+    "electronics.audio.acoustic": 236830,
+    "computers.components.videocards": 234663,
+    "computers.peripherals.mouse": 187707,
+    "computers.components.hdd": 179641,
+    "computers.peripherals.keyboard": 141803,
+    "computers.components.cpu": 132766,
+    "computers.components.memory": 121299,
+    "computers.components.motherboard": 119449,
+    "computers.components.cooler": 116540
+  },
+  "session_class_imbalance": {
+    "available": true,
+    "total_sessions": 2648705,
+    "input_sessions": 2649586,
+    "purchase_sessions": 126473,
+    "non_purchase_sessions": 2522232,
+    "conversion_rate_pct": 4.7749,
+    "imbalance_ratio_text": "1 : 19.94",
+    "leakage_events_removed": 294624,
+    "dropped_purchase_only_sessions": 881,
+    "dropped_no_history_sessions": 881,
+    "duration_seconds": 1275.72
+  },
+  "feature_summary": {
+    "view_count": {
+      "all": {
+        "mean": 3.7079,
+        "std": 6.0793,
+        "median": 2.0,
+        "p95": 13.0,
+        "max": 568.0
+      },
+      "non_purchase_0": {
+        "mean": 3.706,
+        "std": 6.051,
+        "median": 2.0,
+        "p95": 13.0,
+        "max": 568.0
+      },
+      "purchase_1": {
+        "mean": 3.7453,
+        "std": 6.6182,
+        "median": 2.0,
+        "p95": 13.0,
+        "max": 196.0
+      }
+    },
+    "unique_products": {
+      "all": {
+        "mean": 2.3879,
+        "std": 3.2834,
+        "median": 1.0,
+        "p95": 8.0,
+        "max": 255.0
+      },
+      "non_purchase_0": {
+        "mean": 2.4031,
+        "std": 3.3007,
+        "median": 1.0,
+        "p95": 8.0,
+        "max": 255.0
+      },
+      "purchase_1": {
+        "mean": 2.0837,
+        "std": 2.9004,
+        "median": 1.0,
+        "p95": 6.0,
+        "max": 94.0
+      }
+    },
+    "unique_categories": {
+      "all": {
+        "mean": 1.084,
+        "std": 0.4014,
+        "median": 1.0,
+        "p95": 2.0,
+        "max": 16.0
+      },
+      "non_purchase_0": {
+        "mean": 1.0867,
+        "std": 0.4082,
+        "median": 1.0,
+        "p95": 2.0,
+        "max": 16.0
+      },
+      "purchase_1": {
+        "mean": 1.0312,
+        "std": 0.2199,
+        "median": 1.0,
+        "p95": 1.0,
+        "max": 11.0
+      }
+    },
+    "cart_count": {
+      "all": {
+        "mean": 0.1248,
+        "std": 0.5851,
+        "median": 0.0,
+        "p95": 1.0,
+        "max": 113.0
+      },
+      "non_purchase_0": {
+        "mean": 0.0837,
+        "std": 0.492,
+        "median": 0.0,
+        "p95": 1.0,
+        "max": 113.0
+      },
+      "purchase_1": {
+        "mean": 0.9431,
+        "std": 1.2801,
+        "median": 1.0,
+        "p95": 3.0,
+        "max": 111.0
+      }
+    },
+    "remove_cart_count": {
+      "all": {
+        "mean": 0.0,
+        "std": 0.0,
+        "median": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "non_purchase_0": {
+        "mean": 0.0,
+        "std": 0.0,
+        "median": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      },
+      "purchase_1": {
+        "mean": 0.0,
+        "std": 0.0,
+        "median": 0.0,
+        "p95": 0.0,
+        "max": 0.0
+      }
+    },
+    "session_duration_sec": {
+      "all": {
+        "mean": 875.8984,
+        "std": 26049.1794,
+        "median": 22.0,
+        "p95": 979.0,
+        "max": 4920199.0
+      },
+      "non_purchase_0": {
+        "mean": 907.6901,
+        "std": 26692.5009,
+        "median": 21.0,
+        "p95": 978.0,
+        "max": 4920199.0
+      },
+      "purchase_1": {
+        "mean": 241.8824,
+        "std": 1216.3615,
+        "median": 40.0,
+        "p95": 1004.0,
+        "max": 250486.0
+      }
+    },
+    "avg_price": {
+      "all": {
+        "mean": 344.5002,
+        "std": 417.9457,
+        "median": 175.01,
+        "p95": 1270.95,
+        "max": 2574.04
+      },
+      "non_purchase_0": {
+        "mean": 349.2595,
+        "std": 422.417,
+        "median": 177.2707,
+        "p95": 1286.78,
+        "max": 2574.04
+      },
+      "purchase_1": {
+        "mean": 249.5857,
+        "std": 300.4708,
+        "median": 162.6,
+        "p95": 823.68,
+        "max": 2574.04
+      }
+    },
+    "max_price": {
+      "all": {
+        "mean": 418.8691,
+        "std": 527.5338,
+        "median": 192.26,
+        "p95": 1569.92,
+        "max": 2574.04
+      },
+      "non_purchase_0": {
+        "mean": 425.552,
+        "std": 533.5878,
+        "median": 195.54,
+        "p95": 1585.37,
+        "max": 2574.04
+      },
+      "purchase_1": {
+        "mean": 285.5932,
+        "std": 362.6645,
+        "median": 167.87,
+        "p95": 993.33,
+        "max": 2574.04
+      }
+    },
+    "min_price": {
+      "all": {
+        "mean": 293.6698,
+        "std": 384.5006,
+        "median": 160.88,
+        "p95": 1106.59,
+        "max": 2574.04
+      },
+      "non_purchase_0": {
+        "mean": 297.057,
+        "std": 388.6623,
+        "median": 160.88,
+        "p95": 1123.96,
+        "max": 2574.04
+      },
+      "purchase_1": {
+        "mean": 226.1182,
+        "std": 280.8533,
+        "median": 160.87,
+        "p95": 720.48,
+        "max": 2574.04
+      }
+    },
+    "repeat_view_ratio": {
+      "all": {
+        "mean": 0.1927,
+        "std": 0.2504,
+        "median": 0.0,
+        "p95": 0.6667,
+        "max": 0.9884
+      },
+      "non_purchase_0": {
+        "mean": 0.1907,
+        "std": 0.2487,
+        "median": 0.0,
+        "p95": 0.6667,
+        "max": 0.9884
+      },
+      "purchase_1": {
+        "mean": 0.2333,
+        "std": 0.2795,
+        "median": 0.0,
+        "p95": 0.7143,
+        "max": 0.9767
+      }
+    },
+    "cart_to_view_ratio": {
+      "all": {
+        "mean": 0.0541,
+        "std": 0.3041,
+        "median": 0.0,
+        "p95": 0.4,
+        "max": 113.0
+      },
+      "non_purchase_0": {
+        "mean": 0.031,
+        "std": 0.2374,
+        "median": 0.0,
+        "p95": 0.0909,
+        "max": 113.0
+      },
+      "purchase_1": {
+        "mean": 0.5144,
+        "std": 0.768,
+        "median": 0.3333,
+        "p95": 1.0,
+        "max": 111.0
+      }
+    },
+    "hour": {
+      "all": {
+        "mean": 10.9964,
+        "std": 5.2348,
+        "median": 11.0,
+        "p95": 19.0,
+        "max": 23.0
+      },
+      "non_purchase_0": {
+        "mean": 11.0166,
+        "std": 5.254,
+        "median": 11.0,
+        "p95": 19.0,
+        "max": 23.0
+      },
+      "purchase_1": {
+        "mean": 10.5916,
+        "std": 4.8189,
+        "median": 10.0,
+        "p95": 19.0,
+        "max": 23.0
+      }
+    },
+    "day_of_week": {
+      "all": {
+        "mean": 3.126,
+        "std": 1.964,
+        "median": 3.0,
+        "p95": 6.0,
+        "max": 6.0
+      },
+      "non_purchase_0": {
+        "mean": 3.1147,
+        "std": 1.9577,
+        "median": 3.0,
+        "p95": 6.0,
+        "max": 6.0
+      },
+      "purchase_1": {
+        "mean": 3.3517,
+        "std": 2.0732,
+        "median": 4.0,
+        "p95": 6.0,
+        "max": 6.0
+      }
+    },
+    "is_weekend": {
+      "all": {
+        "mean": 0.3005,
+        "std": 0.4585,
+        "median": 0.0,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "non_purchase_0": {
+        "mean": 0.2968,
+        "std": 0.4568,
+        "median": 0.0,
+        "p95": 1.0,
+        "max": 1.0
+      },
+      "purchase_1": {
+        "mean": 0.3741,
+        "std": 0.4839,
+        "median": 0.0,
+        "p95": 1.0,
+        "max": 1.0
+      }
+    }
+  },
+  "independent_test_set": {
+    "generated_at_utc": "2026-11-05 02:38:06 UTC",
+    "partial_run": false,
+    "data_filtering_funnel": {
+      "total_raw_rows": 67542878,
+      "dropped_non_target_category": 61997158,
+      "dropped_non_target_pct": 91.7893,
+      "dropped_invalid_rows": 7312,
+      "dropped_invalid_pct": 0.0108,
+      "valid_filtered_rows": 5538408,
+      "retention_rate_pct": 8.1998,
+      "output_size_mb": 782.73,
+      "elapsed_seconds": 506.19,
+      "input_files": [
+        "2019-Dec.csv"
+      ],
+      "per_file_stats": [
+        {
+          "file_name": "2019-Dec.csv",
+          "file_size_mb": 8924.47,
+          "chunks_processed": 136,
+          "total_raw_rows": 67542878,
+          "dropped_non_target_category": 61997158,
+          "dropped_invalid_rows": 7312,
+          "valid_filtered_rows": 5538408,
+          "elapsed_seconds": 506.19
+        }
+      ],
+      "partial_run": false
+    },
+    "event_distribution": {
+      "view": {
+        "count": 5296648,
+        "pct": 95.6348
+      },
+      "cart": {
+        "count": 179649,
+        "pct": 3.2437
+      },
+      "remove_from_cart": {
+        "count": 0,
+        "pct": 0.0
+      },
+      "purchase": {
+        "count": 62111,
+        "pct": 1.1215
+      }
+    },
+    "unique_products": 20679,
+    "unique_brands": 1091,
+    "top_categories": {
+      "computers.peripherals.printer": 1397601,
+      "electronics.audio.headphone": 1373973,
+      "computers.notebook": 514485,
+      "computers.desktop": 485709,
+      "electronics.audio.subwoofer": 353078,
+      "computers.components.cooler": 336724,
+      "electronics.audio.microphone": 222831,
+      "computers.components.power_supply": 200910,
+      "electronics.audio.acoustic": 179780,
+      "computers.peripherals.mouse": 111664,
+      "computers.ebooks": 105803,
+      "computers.components.videocards": 69271,
+      "electronics.audio.music_tools.piano": 49998,
+      "computers.peripherals.monitor": 42309,
+      "computers.components.motherboard": 24576
+    },
+    "session_class_imbalance": {
+      "available": true,
+      "total_sessions": 1786352,
+      "input_sessions": 1786490,
+      "purchase_sessions": 55760,
+      "non_purchase_sessions": 1730592,
+      "conversion_rate_pct": 3.1214,
+      "imbalance_ratio_text": "1 : 31.04",
+      "leakage_events_removed": 130829,
+      "dropped_purchase_only_sessions": 138,
+      "dropped_no_history_sessions": 138,
+      "duration_seconds": 149.81
+    },
+    "feature_summary": {
+      "view_count": {
+        "all": {
+          "mean": 2.9317,
+          "std": 4.843,
+          "median": 1.0,
+          "p95": 10.0,
+          "max": 578.0
+        },
+        "non_purchase_0": {
+          "mean": 2.8994,
+          "std": 4.7556,
+          "median": 1.0,
+          "p95": 10.0,
+          "max": 578.0
+        },
+        "purchase_1": {
+          "mean": 3.9335,
+          "std": 6.9596,
+          "median": 2.0,
+          "p95": 14.0,
+          "max": 247.0
+        }
+      },
+      "unique_products": {
+        "all": {
+          "mean": 2.0626,
+          "std": 2.9375,
+          "median": 1.0,
+          "p95": 6.0,
+          "max": 578.0
+        },
+        "non_purchase_0": {
+          "mean": 2.0556,
+          "std": 2.9211,
+          "median": 1.0,
+          "p95": 6.0,
+          "max": 578.0
+        },
+        "purchase_1": {
+          "mean": 2.2796,
+          "std": 3.3986,
+          "median": 1.0,
+          "p95": 7.0,
+          "max": 97.0
+        }
+      },
+      "unique_categories": {
+        "all": {
+          "mean": 1.1006,
+          "std": 0.3428,
+          "median": 1.0,
+          "p95": 2.0,
+          "max": 12.0
+        },
+        "non_purchase_0": {
+          "mean": 1.1012,
+          "std": 0.3444,
+          "median": 1.0,
+          "p95": 2.0,
+          "max": 12.0
+        },
+        "purchase_1": {
+          "mean": 1.0812,
+          "std": 0.2867,
+          "median": 1.0,
+          "p95": 2.0,
+          "max": 7.0
+        }
+      },
+      "cart_count": {
+        "all": {
+          "mean": 0.0955,
+          "std": 0.4985,
+          "median": 0.0,
+          "p95": 1.0,
+          "max": 109.0
+        },
+        "non_purchase_0": {
+          "mean": 0.0533,
+          "std": 0.3765,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 69.0
+        },
+        "purchase_1": {
+          "mean": 1.4069,
+          "std": 1.3358,
+          "median": 1.0,
+          "p95": 3.0,
+          "max": 109.0
+        }
+      },
+      "remove_cart_count": {
+        "all": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "non_purchase_0": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "purchase_1": {
+          "mean": 0.0,
+          "std": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        }
+      },
+      "session_duration_sec": {
+        "all": {
+          "mean": 924.4896,
+          "std": 21995.1741,
+          "median": 0.0,
+          "p95": 901.0,
+          "max": 2550069.0
+        },
+        "non_purchase_0": {
+          "mean": 944.9121,
+          "std": 22343.7115,
+          "median": 0.0,
+          "p95": 889.0,
+          "max": 2550069.0
+        },
+        "purchase_1": {
+          "mean": 290.6474,
+          "std": 1934.7711,
+          "median": 49.0,
+          "p95": 1231.05,
+          "max": 370713.0
+        }
+      },
+      "avg_price": {
+        "all": {
+          "mean": 337.4705,
+          "std": 428.8152,
+          "median": 199.3547,
+          "p95": 1245.6953,
+          "max": 2574.07
+        },
+        "non_purchase_0": {
+          "mean": 339.0245,
+          "std": 431.4569,
+          "median": 199.49,
+          "p95": 1258.46,
+          "max": 2574.07
+        },
+        "purchase_1": {
+          "mean": 289.2387,
+          "std": 333.091,
+          "median": 196.92,
+          "p95": 948.29,
+          "max": 2574.04
+        }
+      },
+      "max_price": {
+        "all": {
+          "mean": 393.718,
+          "std": 516.363,
+          "median": 220.08,
+          "p95": 1566.88,
+          "max": 2574.07
+        },
+        "non_purchase_0": {
+          "mean": 395.7899,
+          "std": 519.7085,
+          "median": 220.08,
+          "p95": 1567.58,
+          "max": 2574.07
+        },
+        "purchase_1": {
+          "mean": 329.412,
+          "std": 393.4262,
+          "median": 210.02,
+          "p95": 1106.9015,
+          "max": 2574.07
+        }
+      },
+      "min_price": {
+        "all": {
+          "mean": 298.743,
+          "std": 403.4044,
+          "median": 169.86,
+          "p95": 1093.72,
+          "max": 2574.07
+        },
+        "non_purchase_0": {
+          "mean": 299.8883,
+          "std": 405.8181,
+          "median": 169.63,
+          "p95": 1101.39,
+          "max": 2574.07
+        },
+        "purchase_1": {
+          "mean": 263.1965,
+          "std": 317.5069,
+          "median": 171.43,
+          "p95": 897.617,
+          "max": 2574.04
+        }
+      },
+      "repeat_view_ratio": {
+        "all": {
+          "mean": 0.1498,
+          "std": 0.2359,
+          "median": 0.0,
+          "p95": 0.6667,
+          "max": 0.9904
+        },
+        "non_purchase_0": {
+          "mean": 0.1472,
+          "std": 0.234,
+          "median": 0.0,
+          "p95": 0.6667,
+          "max": 0.9904
+        },
+        "purchase_1": {
+          "mean": 0.2304,
+          "std": 0.2763,
+          "median": 0.0,
+          "p95": 0.7143,
+          "max": 0.9565
+        }
+      },
+      "cart_to_view_ratio": {
+        "all": {
+          "mean": 0.0407,
+          "std": 0.2469,
+          "median": 0.0,
+          "p95": 0.25,
+          "max": 109.0
+        },
+        "non_purchase_0": {
+          "mean": 0.0183,
+          "std": 0.1607,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 40.0
+        },
+        "purchase_1": {
+          "mean": 0.7362,
+          "std": 0.8072,
+          "median": 1.0,
+          "p95": 1.0,
+          "max": 109.0
+        }
+      },
+      "hour": {
+        "all": {
+          "mean": 11.1209,
+          "std": 5.3773,
+          "median": 11.0,
+          "p95": 20.0,
+          "max": 23.0
+        },
+        "non_purchase_0": {
+          "mean": 11.1326,
+          "std": 5.3868,
+          "median": 11.0,
+          "p95": 20.0,
+          "max": 23.0
+        },
+        "purchase_1": {
+          "mean": 10.7579,
+          "std": 5.0604,
+          "median": 10.0,
+          "p95": 19.0,
+          "max": 23.0
+        }
+      },
+      "day_of_week": {
+        "all": {
+          "mean": 2.8464,
+          "std": 2.0874,
+          "median": 3.0,
+          "p95": 6.0,
+          "max": 6.0
+        },
+        "non_purchase_0": {
+          "mean": 2.8466,
+          "std": 2.0869,
+          "median": 3.0,
+          "p95": 6.0,
+          "max": 6.0
+        },
+        "purchase_1": {
+          "mean": 2.8399,
+          "std": 2.1034,
+          "median": 3.0,
+          "p95": 6.0,
+          "max": 6.0
+        }
+      },
+      "is_weekend": {
+        "all": {
+          "mean": 0.2749,
+          "std": 0.4464,
+          "median": 0.0,
+          "p95": 1.0,
+          "max": 1.0
+        },
+        "non_purchase_0": {
+          "mean": 0.2747,
+          "std": 0.4464,
+          "median": 0.0,
+          "p95": 1.0,
+          "max": 1.0
+        },
+        "purchase_1": {
+          "mean": 0.2799,
+          "std": 0.4489,
+          "median": 0.0,
+          "p95": 1.0,
+          "max": 1.0
+        }
+      }
+    }
+  }
+}
