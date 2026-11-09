@@ -22,7 +22,7 @@ SESSION_FEATURES_PATH = ARTIFACTS_DIR / "session_features.csv"
 SESSION_TEST_FEATURES_PATH = ARTIFACTS_DIR / "session_test_features.csv"
 FEATURE_META_PATH = ARTIFACTS_DIR / "feature_meta.json"
 PIPELINE_STATS_REPORT_PATH = Path(__file__).resolve().parent / "pipeline_stats_report.json"
-MARKDOWN_REPORT_PATH = BASE_DIR / "del" / "rp_03_pipeline_stats.md"
+MARKDOWN_REPORT_PATH = Path(__file__).resolve().parent / "rp_03_pipeline_stats.md"
 
 KAGGLE_CSV_COLUMNS = [
     "event_time",
@@ -96,3 +96,29 @@ SESSION_FEATURE_COLUMNS = [
 TARGET_LABEL_COLUMN = "will_purchase"
 
 DEFAULT_CHUNK_SIZE = 500_000
+
+MODELS_DIR = ARTIFACTS_DIR / "models"
+BEST_MODEL_PATH = MODELS_DIR / "best_purchase_model.joblib"
+BEST_MODEL_META_PATH = MODELS_DIR / "best_model_meta.json"
+LOGISTIC_MODEL_PATH = MODELS_DIR / "logistic_regression.joblib"
+RANDOM_FOREST_MODEL_PATH = MODELS_DIR / "random_forest.joblib"
+GRADIENT_BOOSTING_MODEL_PATH = MODELS_DIR / "gradient_boosting.joblib"
+EARLY_INTENT_MODEL_PATH = MODELS_DIR / "early_intent_no_cart.joblib"
+TRAINING_SUMMARY_META_PATH = MODELS_DIR / "training_summary_meta.json"
+
+MODEL_EVAL_REPORT_JSON_PATH = Path(__file__).resolve().parent / "model_evaluation_report.json"
+MODEL_EVAL_REPORT_MD_PATH = Path(__file__).resolve().parent / "rp_04_model_evaluation.md"
+
+VND_TO_USD_RATE = 25_000.0
+MAX_SESSION_DURATION_SEC = 3600.0
+DEFAULT_RANDOM_STATE = 42
+
+EARLY_INTENT_EXCLUDED_COLUMNS = (
+    "cart_count",
+    "remove_cart_count",
+    "cart_to_view_ratio",
+)
+
+EARLY_INTENT_FEATURE_COLUMNS = [
+    col for col in SESSION_FEATURE_COLUMNS if col not in EARLY_INTENT_EXCLUDED_COLUMNS
+]

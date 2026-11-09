@@ -561,3 +561,214 @@ class RealPipelineIntegrationTests(TestCase):
             self.assertEqual(meta["leakage_events_removed"], 2)
             self.assertTrue((root / "out" / "pipeline_stats_report.json").is_file())
             self.assertTrue((root / "report.md").read_text(encoding="utf-8").strip())
+
+
+def _synthetic_session_features_df(n_sessions=400, seed=42):
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    # ~10% positive rate so 70/15/15 splits each have plenty of positive examples
+    y = (rng.random(n_sessions) < 0.10).astype("int64")
+    view_count = rng.integers(1, 20, size=n_sessions) + y * rng.integers(1, 5, size=n_sessions)
+    unique_products = np.maximum(1, (view_count * rng.uniform(0.4, 1.0, size=n_sessions)).astype("int64"))
+    unique_categories = np.maximum(1, rng.integers(1, 4, size=n_sessions))
+    cart_count = np.where(
+        y == 1,
+        rng.integers(1, 4, size=n_sessions),
+        (rng.random(n_sessions) < 0.08).astype("int64"),
+    )
+    remove_cart_count = np.zeros(n_sessions, dtype="int64")
+    # Include extreme 57-day outliers on negative sessions to test clipping
+    duration = np.where(
+        y == 1,
+        rng.uniform(30.0, 600.0, size=n_sessions),
+        rng.uniform(10.0, 1200.0, size=n_sessions),
+    )
+    duration[:5] = 4_920_199.0
+    avg_price = rng.uniform(50.0, 800.0, size=n_sessions)
+    max_price = avg_price + rng.uniform(0.0, 200.0, size=n_sessions)
+    min_price = np.maximum(10.0, avg_price - rng.uniform(0.0, 40.0, size=n_sessions))
+    repeat_view_ratio = np.clip((view_count - unique_products) / np.maximum(view_count, 1), 0.0, 1.0)
+    cart_to_view_ratio = cart_count / np.maximum(view_count, 1)
+    hour = rng.integers(0, 24, size=n_sessions)
+    day_of_week = rng.integers(0, 7, size=n_sessions)
+    is_weekend = np.isin(day_of_week, [5, 6]).astype("int64")
+
+    return pd.DataFrame({
+        "user_session": [f"syn-session-{i}" for i in range(n_sessions)],
+        "view_count": view_count,
+        "unique_products": unique_products,
+        "unique_categories": unique_categories,
+        "cart_count": cart_count,
+        "remove_cart_count": remove_cart_count,
+        "session_duration_sec": duration,
+        "avg_price": avg_price,
+        "max_price": max_price,
+        "min_price": min_price,
+        "repeat_view_ratio": repeat_view_ratio,
+        "cart_to_view_ratio": cart_to_view_ratio,
+        "hour": hour,
+        "day_of_week": day_of_week,
+        "is_weekend": is_weekend,
+        "will_purchase": y,
+    })[OUTPUT_COLUMNS]
+
+
+class ModelTrainingAndCalibrationTests(TestCase):
+    databases = set()
+
+    def test_session_feature_transformer_clips_outliers_and_preserves_currency_invariance(self):
+        import numpy as np
+        from analytics.ml.transformers import SessionFeatureTransformer
+
+        df = _synthetic_session_features_df(n_sessions=20)
+        original = df.copy(deep=True)
+        X_usd = df[FEATURE_COLUMNS].copy()
+        X_vnd = df[FEATURE_COLUMNS].copy()
+        for col in ("avg_price", "max_price", "min_price"):
+            X_vnd[col] = X_vnd[col] * 25_000.0
+
+        transformer = SessionFeatureTransformer(max_duration_sec=3600.0, add_price_range_ratio=True)
+        out_usd = transformer.fit_transform(X_usd)
+        out_vnd = transformer.transform(X_vnd)
+        names = list(transformer.get_feature_names_out())
+
+        self.assertIn("price_range_ratio", names)
+        self.assertEqual(out_usd.shape, (20, 15))
+        pd.testing.assert_frame_equal(df, original)
+
+        # 57-day outlier (4,920,199s) must be clipped to log1p(3600.0)
+        dur_idx = names.index("session_duration_sec")
+        self.assertAlmostEqual(out_usd[0, dur_idx], float(np.log1p(3600.0)), places=6)
+
+        # Dimensionless price_range_ratio must be identical in USD and VND
+        ratio_idx = names.index("price_range_ratio")
+        np.testing.assert_allclose(out_usd[:, ratio_idx], out_vnd[:, ratio_idx], rtol=1e-6)
+
+        # Early-intent ablation transformer drops the 3 cart columns
+        early_tf = SessionFeatureTransformer(drop_cart_features=True)
+        out_early = early_tf.fit_transform(X_usd)
+        early_names = list(early_tf.get_feature_names_out())
+        for cart_col in ("cart_count", "remove_cart_count", "cart_to_view_ratio"):
+            self.assertNotIn(cart_col, early_names)
+        self.assertEqual(out_early.shape, (20, 12))
+
+    def test_stratified_70_15_15_split_is_disjoint_and_balanced(self):
+        from analytics.ml.train import split_session_features_70_15_15
+
+        df = _synthetic_session_features_df(n_sessions=400, seed=7)
+        splits = split_session_features_70_15_15(df, random_state=42)
+        summary = splits["split_summary"]
+        self.assertEqual(
+            summary["train_fit_70"]["total_sessions"]
+            + summary["val_calib_15"]["total_sessions"]
+            + summary["val_select_15"]["total_sessions"],
+            400,
+        )
+        self.assertEqual(summary["train_fit_70"]["total_sessions"], 280)
+        self.assertEqual(summary["val_calib_15"]["total_sessions"], 60)
+        self.assertEqual(summary["val_select_15"]["total_sessions"], 60)
+        self.assertGreater(summary["train_fit_70"]["positive_sessions"], 0)
+        self.assertGreater(summary["val_calib_15"]["positive_sessions"], 0)
+        self.assertGreater(summary["val_select_15"]["positive_sessions"], 0)
+
+    def test_train_calibrate_evaluate_and_web_predictor_end_to_end(self):
+        from datetime import datetime, timezone
+        from analytics.ml.evaluate import run_final_test_evaluation
+        from analytics.ml.predictor import (
+            clear_predictor_cache,
+            extract_live_session_features,
+            predict_session_purchase_intent,
+        )
+        from analytics.ml.train import ALL_MODEL_NAMES, run_training_pipeline
+
+        train_df = _synthetic_session_features_df(n_sessions=360, seed=101)
+        test_df = _synthetic_session_features_df(n_sessions=200, seed=202)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            train_csv = root / "session_features.csv"
+            test_csv = root / "session_test_features.csv"
+            models_dir = root / "models"
+            report_json = root / "model_evaluation_report.json"
+            report_md = root / "rp_04_model_evaluation.md"
+
+            train_df.to_csv(train_csv, index=False)
+            test_df.to_csv(test_csv, index=False)
+
+            train_summary = run_training_pipeline(
+                train_csv_path=train_csv,
+                models_dir=models_dir,
+                rf_n_estimators=20,
+                gb_max_iter=30,
+                min_samples_leaf=5,
+            )
+            self.assertIn(
+                train_summary["champion_model_name"],
+                ("logistic_regression", "random_forest", "gradient_boosting"),
+            )
+            for name in ALL_MODEL_NAMES:
+                self.assertTrue((models_dir / f"{name}.joblib").is_file())
+            self.assertTrue((models_dir / "best_purchase_model.joblib").is_file())
+            self.assertTrue((models_dir / "best_model_meta.json").is_file())
+
+            eval_report = run_final_test_evaluation(
+                test_csv_path=test_csv,
+                models_dir=models_dir,
+                output_json_path=report_json,
+                output_md_path=report_md,
+            )
+            self.assertTrue(report_json.is_file())
+            self.assertTrue(report_md.is_file())
+            self.assertIn("multi_slice_evaluation", eval_report)
+            self.assertIn("cart_active_subset", eval_report["multi_slice_evaluation"])
+            self.assertIn("feature_importance", eval_report)
+
+            # Verify Web Inference Adapter: VND -> USD conversion and net cart removal
+            clear_predictor_cache()
+            t1 = datetime(2026, 11, 9, 10, 0, 0, tzinfo=timezone.utc)
+            t2 = datetime(2026, 11, 9, 10, 1, 0, tzinfo=timezone.utc)
+            t3 = datetime(2026, 11, 9, 10, 2, 0, tzinfo=timezone.utc)
+
+            ev_view = types.SimpleNamespace(
+                id=1, session_id="web-s1", event_type="view_product",
+                product_id=10, product=types.SimpleNamespace(price=5_000_000, category_id=1),
+                event_value=5_000_000, created_at=t1,
+            )
+            ev_add = types.SimpleNamespace(
+                id=2, session_id="web-s1", event_type="add_to_cart",
+                product_id=10, product=types.SimpleNamespace(price=5_000_000, category_id=1),
+                event_value=5_000_000, created_at=t2,
+            )
+            ev_remove = types.SimpleNamespace(
+                id=3, session_id="web-s1", event_type="remove_from_cart",
+                product_id=10, product=types.SimpleNamespace(price=5_000_000, category_id=1),
+                event_value=5_000_000, created_at=t3,
+            )
+
+            feat_with_cart = extract_live_session_features([ev_view, ev_add], vnd_to_usd_rate=25_000.0)
+            self.assertAlmostEqual(feat_with_cart["avg_price"], 200.0, places=4)
+            self.assertEqual(feat_with_cart["cart_count"], 1)
+
+            feat_after_remove = extract_live_session_features(
+                [ev_view, ev_add, ev_remove], vnd_to_usd_rate=25_000.0
+            )
+            self.assertEqual(feat_after_remove["cart_count"], 0)
+            self.assertEqual(feat_after_remove["effective_cart_count"], 0)
+            self.assertEqual(feat_after_remove["raw_remove_from_cart_count"], 1)
+
+            pred_cart = predict_session_purchase_intent(
+                [ev_view, ev_add],
+                model_path=models_dir / "best_purchase_model.joblib",
+                meta_path=models_dir / "best_model_meta.json",
+            )
+            pred_removed = predict_session_purchase_intent(
+                [ev_view, ev_add, ev_remove],
+                model_path=models_dir / "best_purchase_model.joblib",
+                meta_path=models_dir / "best_model_meta.json",
+            )
+            self.assertGreater(
+                pred_cart["purchase_probability"],
+                pred_removed["purchase_probability"],
+            )
+

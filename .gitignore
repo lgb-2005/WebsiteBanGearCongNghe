@@ -8,17 +8,28 @@ db.sqlite3
 *.log
 media/
 staticfiles/
+del/*.md
 
 # Dataset & ML pipeline heavy artifacts
 dataset_example_trainModel/*.csv
 dataset_example_trainModel/*.gz
 dataset_example_trainModel/*.parquet
 *.parquet
-analytics/ml/artifacts/
-analytics/ml/artifacts/*.csv
-analytics/ml/artifacts/*.parquet
-.tmp_*.py
 
+# Ignore all heavy files in artifacts/, EXCEPT the lightweight 1.7MB champion model & metadata for Web/Chatbot
+analytics/ml/artifacts/*
+!analytics/ml/artifacts/models/
+analytics/ml/artifacts/models/*
+!analytics/ml/artifacts/models/best_purchase_model.joblib
+!analytics/ml/artifacts/models/best_model_meta.json
+!analytics/ml/artifacts/models/training_summary_meta.json
+
+# Temporary scripts, notebooks & local AI planning docs
+.tmp_*.py
+.ipynb_checkpoints/
+analytics/ml/*.ipynb
+analytics/ml/rp_03fn.md
+analytics/ml/plan/
 
 /.md_plan/
 /dataset_trainmodel/

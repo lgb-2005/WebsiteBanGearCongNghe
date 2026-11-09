@@ -104,7 +104,7 @@ class Command(BaseCommand):
         output = (options["output_dir"] or base / "dataset_trainmodel" / "pipeline_output" /
                   ("smoke" if partial else "train")).resolve()
         report = (options["report_md"] or (
-            output / "rp_03_pipeline_stats.md" if partial else base / "del" / "rp_03_pipeline_stats.md"
+            output / "rp_03_pipeline_stats.md" if partial else base / "analytics" / "ml" / "rp_03_pipeline_stats.md"
         )).resolve()
         manifest_path = output / "manifest.json"
         destinations = [output / name for name in ARTIFACTS] + [report, manifest_path]
@@ -114,7 +114,7 @@ class Command(BaseCommand):
             raise CommandError("Report/input paths must not collide with the output directory or run lock")
         if any(path.is_dir() for path in destinations):
             raise CommandError("An output file path points to a directory")
-        if partial and report == (base / "del" / "rp_03_pipeline_stats.md").resolve():
+        if partial and report == (base / "analytics" / "ml" / "rp_03_pipeline_stats.md").resolve():
             raise CommandError("A partial run must use a separate Markdown report")
         previous = None
         if manifest_path.is_file():

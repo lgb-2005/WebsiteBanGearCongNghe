@@ -1,0 +1,83 @@
+{
+  "generated_at_utc": "2026-11-09 17:26:23 UTC",
+  "champion_model_name": "gradient_boosting",
+  "champion_display_name": "HistGradientBoosting (Gradient Boosted Trees)",
+  "selection_metric": "PR-AUC (Average Precision on Val_Select)",
+  "optimal_threshold": 0.31,
+  "calibration_method": "sigmoid",
+  "schema_version": 1,
+  "sklearn_version": "1.6.1",
+  "input_feature_columns": [
+    "view_count",
+    "unique_products",
+    "unique_categories",
+    "cart_count",
+    "remove_cart_count",
+    "session_duration_sec",
+    "avg_price",
+    "max_price",
+    "min_price",
+    "repeat_view_ratio",
+    "cart_to_view_ratio",
+    "hour",
+    "day_of_week",
+    "is_weekend"
+  ],
+  "vnd_to_usd_rate": 25000.0,
+  "max_session_duration_sec": 3600.0,
+  "partial_sample_run": false,
+  "val_select_metrics": {
+    "total_samples": 397306,
+    "positive_samples": 18971,
+    "negative_samples": 378335,
+    "positive_rate_pct": 4.7749,
+    "pr_auc": 0.494219,
+    "roc_auc": 0.876506,
+    "brier_score": 0.031062,
+    "log_loss": 0.123088,
+    "threshold_used": 0.31,
+    "f1_at_threshold": 0.538439,
+    "precision_at_threshold": 0.555282,
+    "recall_at_threshold": 0.522587,
+    "accuracy_at_threshold_reference_only": 0.957219,
+    "f1_at_default_050": 0.475715,
+    "precision_at_default_050": 0.669665,
+    "recall_at_default_050": 0.368879,
+    "confusion_matrix": {
+      "tp": 9914,
+      "fp": 7940,
+      "tn": 370395,
+      "fn": 9057
+    }
+  },
+  "all_model_thresholds": {
+    "logistic_regression": 0.2238,
+    "random_forest": 0.28,
+    "gradient_boosting": 0.31,
+    "early_intent_no_cart": 0.2236
+  },
+  "test_metrics_summary": {
+    "total_samples": 1786352,
+    "positive_samples": 55760,
+    "negative_samples": 1730592,
+    "positive_rate_pct": 3.1214,
+    "pr_auc": 0.669483,
+    "roc_auc": 0.983173,
+    "brier_score": 0.01508,
+    "log_loss": 0.058639,
+    "threshold_used": 0.31,
+    "f1_at_threshold": 0.663145,
+    "precision_at_threshold": 0.595268,
+    "recall_at_threshold": 0.748494,
+    "accuracy_at_threshold_reference_only": 0.976264,
+    "f1_at_default_050": 0.591428,
+    "precision_at_default_050": 0.70273,
+    "recall_at_default_050": 0.510563,
+    "confusion_matrix": {
+      "tp": 41736,
+      "fp": 28377,
+      "tn": 1702215,
+      "fn": 14024
+    }
+  }
+}
