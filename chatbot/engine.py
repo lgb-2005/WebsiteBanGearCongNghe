@@ -262,7 +262,11 @@ class ChatEngine:
         conversation.ensure_title(raw_message)
 
         resolved_aliases = resolve_aliases(raw_message)
-        system_prompt = build_system_prompt(resolved_aliases, page_context)
+        system_prompt = build_system_prompt(
+            resolved_aliases,
+            page_context,
+            getattr(ctx, 'purchase_intent', None),
+        )
 
         fast_path_payload = None
         if self.enable_fast_path and self._can_fast_path_search(raw_message, resolved_aliases):
@@ -287,7 +291,9 @@ class ChatEngine:
                 loop_rounds, model_name, prompt_tokens, completion_tokens,
                 total_latency, final_text, status, error_detail,
             )
-            return self._ok_response(conversation, final_text, products, comparison, loop_rounds, total_latency, tool_log_entries)
+            response = self._ok_response(conversation, final_text, products, comparison, loop_rounds, total_latency, tool_log_entries)
+            response['purchase_intent'] = getattr(ctx, 'purchase_intent', {})
+            return response
 
         history = self._load_history(conversation, exclude_message_id=user_msg.pk)
         current_messages = [LLMMessage(role='user', content=user_content)]
@@ -395,7 +401,9 @@ class ChatEngine:
             total_latency, final_text, status, error_detail,
         )
 
-        return self._ok_response(conversation, final_text, products, comparison, loop_rounds, total_latency, tool_log_entries)
+        response = self._ok_response(conversation, final_text, products, comparison, loop_rounds, total_latency, tool_log_entries)
+        response['purchase_intent'] = getattr(ctx, 'purchase_intent', {})
+        return response
 
     def _persist_turn(self, conversation, raw_message, resolved_aliases, tool_log_entries,
                       loop_rounds, model_name, prompt_tokens, completion_tokens,

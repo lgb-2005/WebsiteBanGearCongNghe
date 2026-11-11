@@ -92,6 +92,8 @@ def _format_aliases(resolved):
     keywords = resolved.get('keywords') or []
     if keywords:
         lines.append(f'- Keyword gợi ý: {", ".join(keywords)}')
+    if resolved.get('brand_name'):
+        lines.append(f'- Thương hiệu: {", ".join(resolved["brand_name"])}')
 
     sort = resolved.get('sort_by')
     if sort:
@@ -126,13 +128,23 @@ def _build_context_block(page_context):
     return 'Bạn đang ở một trang khác trong website.'
 
 
-def build_system_prompt(resolved_aliases=None, page_context=None):
+def build_system_prompt(resolved_aliases=None, page_context=None, purchase_intent=None):
     context_block = _build_context_block(page_context)
     aliases = _format_aliases(resolved_aliases)
-    return SYSTEM_PROMPT.format(
+    prompt = SYSTEM_PROMPT.format(
         context_block=context_block,
         aliases=aliases,
     )
+    if purchase_intent:
+        import json
+        from analytics.ml.purchase_intent import build_consultation_strategy
+        # Include only the trusted numerical summary, never client-supplied prose.
+        safe = {key: purchase_intent.get(key) for key in (
+            'available', 'purchase_probability', 'intent_level', 'optimal_threshold', 'behavior_summary')}
+        prompt += '\n\n[TÍN HIỆU DỰ ĐOÁN Ý ĐỊNH MUA HÀNG TỪ MÔ HÌNH ML]\n'
+        prompt += json.dumps(safe, ensure_ascii=False) + '\n' + build_consultation_strategy(purchase_intent)
+        prompt += '\nChỉ công bố xác suất khi khách hỏi; đây là ước lượng, không phải cam kết mua hàng. Dữ liệu không khả dụng không có nghĩa khách chắc chắn không mua. Tín hiệu ML không được ghi đè ngân sách, yêu cầu sản phẩm hoặc điều kiện hỏi lại của khách.'
+    return prompt
 
 
 def build_forced_search_message():

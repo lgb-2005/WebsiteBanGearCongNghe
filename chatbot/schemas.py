@@ -5,6 +5,11 @@ Hiện tại dùng cho Gemini, nhưng cố ý giữ format đơn giản để t�
 
 TOOL_SCHEMAS = [
     {
+        'name': 'get_customer_purchase_intent',
+        'description': 'Lấy xác suất mua hàng và tóm tắt hành vi của chính khách đang chat, do server xác thực. Không thể tra cứu khách khác.',
+        'parameters': {'type': 'object', 'properties': {}},
+    },
+    {
         'name': 'get_catalog_overview',
         'description': 'Lấy tổng quan catalog: danh mục, thương hiệu, khoảng giá, số lượng sản phẩm.',
         'parameters': {

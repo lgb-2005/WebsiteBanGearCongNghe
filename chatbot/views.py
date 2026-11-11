@@ -81,11 +81,13 @@ def chat_api(request):
         except json.JSONDecodeError:
             page_context = {}
 
-    ctx = ChatContext.from_request(request, page_context=page_context)
+    ctx = ChatContext.from_request(request, page_context=page_context, include_purchase_intent=False)
 
     rate_limit = check_rate_limit(ctx)
     if not rate_limit['allowed']:
         return _rate_limited_response(rate_limit)
+
+    ctx.load_purchase_intent(request)
 
     conversation_id = data.get('conversation_id')
     conversation = _conversation_for_request(request, conversation_id)
@@ -166,3 +168,37 @@ def new_conversation_api(request):
         session_id=request.session.session_key if not request.user.is_authenticated else '',
     )
     return JsonResponse({'conversation_id': conversation.pk})
+
+
+def _valid_positive_int_id(value):
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        raise ValueError('Tham số ID không hợp lệ.')
+    if not str(value).isascii() or not str(value).isdigit() or not 0 < int(value) <= 9223372036854775807:
+        raise ValueError('Tham số ID không hợp lệ.')
+    return int(value)
+
+
+@require_GET
+def purchase_intent_api(request):
+    if not _chatbot_enabled():
+        return JsonResponse({'error': 'Chatbot hiện đang tắt.'}, status=503)
+    from analytics.ml.purchase_intent import get_customer_purchase_intent_payload
+    try:
+        if set(request.GET) - {'session_id', 'user_id'}:
+            raise ValueError('Tham số tra cứu không hợp lệ.')
+        if 'session_id' in request.GET and 'user_id' in request.GET:
+            raise ValueError('Chỉ dùng session_id hoặc user_id trong một lần tra cứu.')
+        session_id = request.GET.get('session_id')
+        if session_id is not None:
+            import re
+            if not re.fullmatch(r'[a-zA-Z0-9_-]{1,255}', session_id):
+                raise ValueError('Mã phiên không hợp lệ.')
+        user_id = _valid_positive_int_id(request.GET['user_id']) if 'user_id' in request.GET else None
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+    payload = get_customer_purchase_intent_payload(request, session_id=session_id, user_id=user_id)
+    if payload.get('reason') == 'not_found':
+        return JsonResponse({'error': 'Không tìm thấy dữ liệu trong phạm vi truy cập.'}, status=404)
+    response = JsonResponse(payload)
+    response['Cache-Control'] = 'private, no-store'
+    return response

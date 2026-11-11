@@ -1,5 +1,6 @@
 from .catalog import get_catalog_overview, get_filter_options, get_product_detail, search_products
 from .compare import compare_products
+from .customer import get_customer_purchase_intent
 
 
 TOOL_REGISTRY = {
@@ -8,6 +9,7 @@ TOOL_REGISTRY = {
     'search_products': search_products,
     'get_product_detail': get_product_detail,
     'compare_products': compare_products,
+    'get_customer_purchase_intent': get_customer_purchase_intent,
 }
 
 

@@ -32,6 +32,21 @@ from analytics.ml.config import (
 _MODEL_CACHE: dict[str, Any] = {}
 
 
+def resolve_analytics_session(request=None, session_id=None, user=None):
+    from .purchase_intent import resolve_analytics_session as resolve
+    return resolve(request=request, session_id=session_id, user=user)
+
+
+def build_consultation_strategy(prediction_result):
+    from .purchase_intent import build_consultation_strategy as build
+    return build(prediction_result)
+
+
+def get_customer_purchase_intent_payload(request=None, session_id=None, user_id=None):
+    from .purchase_intent import get_customer_purchase_intent_payload as payload
+    return payload(request=request, session_id=session_id, user_id=user_id)
+
+
 def clear_predictor_cache() -> None:
     """Clear in-memory cached model and metadata."""
     _MODEL_CACHE.clear()
@@ -119,7 +134,8 @@ def extract_live_session_features(
         observed = [
             e
             for e in events_list
-            if getattr(e, "created_at", None) is not None and e.created_at < first_checkout
+            if getattr(e, "event_type", None) in ("view_product", "add_to_cart", "remove_from_cart")
+            and getattr(e, "created_at", None) is not None and e.created_at < first_checkout
         ]
     else:
         observed = [
