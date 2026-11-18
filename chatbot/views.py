@@ -184,19 +184,25 @@ def purchase_intent_api(request):
         return JsonResponse({'error': 'Chatbot hiện đang tắt.'}, status=503)
     from analytics.ml.purchase_intent import get_customer_purchase_intent_payload
     try:
-        if set(request.GET) - {'session_id', 'user_id'}:
+        if set(request.GET) - {'session_id', 'user_id', 'q'}:
             raise ValueError('Tham số tra cứu không hợp lệ.')
-        if 'session_id' in request.GET and 'user_id' in request.GET:
-            raise ValueError('Chỉ dùng session_id hoặc user_id trong một lần tra cứu.')
+        if sum(key in request.GET for key in ('session_id', 'user_id', 'q')) > 1:
+            raise ValueError('Chỉ dùng session_id, user_id hoặc q trong một lần tra cứu.')
         session_id = request.GET.get('session_id')
         if session_id is not None:
             import re
             if not re.fullmatch(r'[a-zA-Z0-9_-]{1,255}', session_id):
                 raise ValueError('Mã phiên không hợp lệ.')
         user_id = _valid_positive_int_id(request.GET['user_id']) if 'user_id' in request.GET else None
+        query = None
+        if 'q' in request.GET:
+            query = ' '.join(request.GET['q'].split())
+            if not query or len(query) > 255:
+                raise ValueError('Từ khóa tra cứu không hợp lệ.')
     except ValueError as exc:
         return JsonResponse({'error': str(exc)}, status=400)
-    payload = get_customer_purchase_intent_payload(request, session_id=session_id, user_id=user_id)
+    payload = get_customer_purchase_intent_payload(
+        request, session_id=session_id, user_id=user_id, query=query)
     if payload.get('reason') == 'not_found':
         return JsonResponse({'error': 'Không tìm thấy dữ liệu trong phạm vi truy cập.'}, status=404)
     response = JsonResponse(payload)

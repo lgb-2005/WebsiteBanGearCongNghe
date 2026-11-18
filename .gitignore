@@ -33,3 +33,7 @@ analytics/ml/plan/
 
 /.md_plan/
 /dataset_trainmodel/
+
+# Local purchase intent planning and verification notes
+/plan_md/ADMIN_PURCHASE_INTENT_VERIFICATION.md
+/plan_md/ADMIN_PURCHASE_INTENT_IMPLEMENTATION_PLAN.md

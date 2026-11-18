@@ -3,7 +3,7 @@ from datetime import datetime, timezone as dt_timezone
 from unittest.mock import patch
 
 from django.contrib.auth.models import AnonymousUser
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.core.cache import cache
 from analytics.models import Event, Session
 from analytics.ml.purchase_intent import get_customer_purchase_intent_payload, resolve_analytics_session
@@ -40,6 +40,137 @@ class PurchaseIntentTests(TestCase):
 
     def tearDown(self):
         cache.clear()
+
+    def test_logged_snapshot_copies_aliases_and_normalizes_invalid_numbers(self):
+        aliases = {'brand': 'test'}
+        payload = {'available': False, 'reason': 'model_unavailable',
+                   'purchase_probability': float('nan'),
+                   'behavior_summary': {'view_count': 'bad', 'avg_price_usd': float('inf')}}
+        original = deepcopy(payload)
+        result = ChatEngine._build_logged_aliases(aliases, payload)
+        self.assertEqual(aliases, {'brand': 'test'})
+        self.assertIsNot(result, aliases)
+        snapshot = result['_ml_purchase_intent']
+        self.assertFalse(snapshot['available'])
+        self.assertEqual(snapshot['purchase_probability'], 0)
+        self.assertEqual(snapshot['behavior_summary']['view_count'], 0)
+        snapshot['behavior_summary']['view_count'] = 99
+        self.assertEqual(payload['behavior_summary'], original['behavior_summary'])
+        for empty in (None, {}, [], 'bad'):
+            self.assertEqual(ChatEngine._build_logged_aliases(aliases, empty), aliases)
+
+    def test_snapshot_is_persisted_on_success_and_provider_initialization_error(self):
+        from chatbot.providers.exceptions import ProviderError
+        intent = {'available': True, 'user_session': str(self.session.pk),
+                  'intent_level': 'high', 'purchase_probability_pct': 68.0,
+                  'behavior_summary': {'effective_cart_count': 1}}
+        for broken in (False, True):
+            with self.subTest(broken=broken):
+                ctx = ChatContext(user=self.user, session_id='snapshot-browser')
+                ctx.purchase_intent = deepcopy(intent)
+                engine = ChatEngine(MockProvider([LLMResult(text='Tôi sẽ giúp bạn.')]))
+                conversation = Conversation.objects.create(user=self.user)
+                if broken:
+                    with patch.object(engine, '_ensure_provider', side_effect=ProviderError('offline')):
+                        engine.process('Xin chào', conversation, ctx)
+                else:
+                    engine.process('Xin chào', conversation, ctx)
+                log = conversation.turn_logs.get()
+                snapshot = log.resolved_aliases['_ml_purchase_intent']
+                self.assertEqual(snapshot['user_session'], str(self.session.pk))
+                self.assertEqual(snapshot['intent_level'], 'high')
+                self.assertEqual(snapshot['purchase_probability_pct'], 68.0)
+                self.assertEqual(snapshot['behavior_summary']['effective_cart_count'], 1)
+                self.assertEqual(ctx.purchase_intent, intent)
+                self.assertEqual(log.status, 'api_error' if broken else 'ok')
+
+    def test_admin_actor_sources_and_invalid_dashboard_sessions(self):
+        from analytics.ml.purchase_intent import _resolve_actor
+        self.other.is_staff = True
+        self.other.save()
+        req = self.request(self.user)
+        req.admin_user = self.other
+        self.assertEqual(_resolve_actor(req), self.other)
+        del req.admin_user
+        req.session['admin_dashboard_user_id'] = self.other.pk
+        self.assertEqual(_resolve_actor(req), self.other)
+        req.user = self.other
+        self.assertEqual(_resolve_actor(req), self.other)
+        req.user = AnonymousUser()
+        self.other.is_staff = False
+        self.other.is_superuser = True
+        self.other.save()
+        self.assertEqual(_resolve_actor(req), self.other)
+        for invalid in ('bad', 2**100, self.user.pk, 999999):
+            req.session['admin_dashboard_user_id'] = invalid
+            self.assertFalse(getattr(_resolve_actor(req), 'is_staff', False))
+        req.session['admin_dashboard_user_id'] = self.other.pk
+        self.other.is_superuser = False
+        self.other.save()
+        self.assertFalse(getattr(_resolve_actor(req), 'is_authenticated', False))
+        self.assertIsNone(resolve_analytics_session(self.request(), user=self.user))
+        self.assertEqual(str(resolve_analytics_session(user=self.user).pk), str(self.session.pk))
+
+    def test_admin_query_lookup_and_access_denial(self):
+        self.user.name = 'Intent Owner'
+        self.user.save()
+        for actor in (None, self.user, self.other):
+            req = self.request(actor)
+            self.assertEqual(get_customer_purchase_intent_payload(
+                req, query=self.user.email)['reason'], 'not_found')
+        self.assertEqual(self.client.get(self.url, {'q': self.user.email}).status_code, 404)
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(self.url, {'q': self.user.email}).status_code, 404)
+        self.client.logout()
+        self.other.is_staff = True
+        self.other.save()
+        store = self.client.session
+        store['admin_dashboard_user_id'] = self.other.pk
+        store.save()
+        with patch('analytics.ml.predictor.predict_session_purchase_intent', return_value=prediction()), patch(
+                'chatbot.engine.GeminiProvider', side_effect=AssertionError('API must not initialize an LLM')):
+            for params in ({'q': self.user.email.upper()}, {'q': '  Intent   Owner  '},
+                           {'q': str(self.session.pk)}, {'q': str(self.session.pk)[:8]},
+                           {'q': str(self.user.pk)}, {'session_id': self.session.pk},
+                           {'user_id': self.user.pk}):
+                with self.subTest(params=params):
+                    response = self.client.get(self.url, params)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTrue(response.json()['available'])
+                    self.assertEqual(response.json()['user_session'], str(self.session.pk))
+                    self.assertEqual(response['Cache-Control'], 'private, no-store')
+        self.assertEqual(self.client.get(self.url, {'q': 'missing@example.test'}).status_code, 404)
+
+    def test_staff_prefers_active_session_but_normal_user_keeps_latest(self):
+        empty = Session.objects.create(user=self.user)
+        self.other.is_staff = True
+        self.other.save()
+        req = self.request(self.other)
+        self.assertEqual(str(resolve_analytics_session(req, query=self.user.email).pk), str(self.session.pk))
+        self.assertEqual(str(resolve_analytics_session(req, user=self.user).pk), str(self.session.pk))
+        self.assertEqual(str(resolve_analytics_session(req, session_id=empty.pk).pk), str(empty.pk))
+        self.assertEqual(str(resolve_analytics_session(self.request(self.user)).pk), str(empty.pk))
+        Event.objects.create(session=empty, event_type='add_to_cart', product=self.product)
+        self.assertEqual(str(resolve_analytics_session(req, query=self.user.email).pk), str(empty.pk))
+        Event.objects.filter(session__user=self.user).delete()
+        self.assertEqual(str(resolve_analytics_session(req, user=self.user).pk), str(empty.pk))
+
+    def test_query_validation_and_unavailable_statuses(self):
+        for params in ({'q': ''}, {'q': '   '}, {'q': 'x' * 256},
+                       {'q': 'abc', 'session_id': '123'}, {'q': 'abc', 'user_id': '1'},
+                       {'q': 'abc', 'unknown': '1'}):
+            with self.subTest(params=params):
+                self.assertEqual(self.client.get(self.url, params).status_code, 400)
+        self.assertEqual(self.client.get(self.url, {'q': 'x' * 255}).status_code, 404)
+        with override_settings(CHATBOT_ENABLED=False):
+            self.assertEqual(self.client.get(self.url).status_code, 503)
+        self.other.is_staff = True
+        self.other.save()
+        self.client.force_login(self.other)
+        with patch('analytics.ml.predictor.predict_session_purchase_intent', side_effect=FileNotFoundError):
+            response = self.client.get(self.url, {'q': self.user.email})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['reason'], 'model_unavailable')
 
     def request(self, user=None, sid=None):
         req = RequestFactory().get(self.url)
@@ -84,8 +215,12 @@ class PurchaseIntentTests(TestCase):
         self.assertFalse(self.client.get(self.url).json()['available'])
         self.client.force_login(self.other)
         empty = self.client.get(self.url, {'user_id': self.other.pk})
+        self.assertEqual(empty.status_code, 404)
+        Session.objects.create(user=self.other)
+        empty = self.client.get(self.url, {'user_id': self.other.pk})
         self.assertEqual(empty.status_code, 200)
         self.assertFalse(empty.json()['available'])
+        self.assertEqual(empty.json()['reason'], 'no_activity')
         req = self.request(self.user)
         with patch('analytics.ml.predictor.predict_session_purchase_intent', side_effect=FileNotFoundError):
             result = get_customer_purchase_intent_payload(req)

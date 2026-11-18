@@ -290,6 +290,7 @@ class ChatEngine:
                 conversation, raw_message, resolved_aliases, tool_log_entries,
                 loop_rounds, model_name, prompt_tokens, completion_tokens,
                 total_latency, final_text, status, error_detail,
+                purchase_intent=getattr(ctx, 'purchase_intent', None),
             )
             response = self._ok_response(conversation, final_text, products, comparison, loop_rounds, total_latency, tool_log_entries)
             response['purchase_intent'] = getattr(ctx, 'purchase_intent', {})
@@ -399,20 +400,69 @@ class ChatEngine:
             conversation, raw_message, resolved_aliases, tool_log_entries,
             loop_rounds, model_name, prompt_tokens, completion_tokens,
             total_latency, final_text, status, error_detail,
+            purchase_intent=getattr(ctx, 'purchase_intent', None),
         )
 
         response = self._ok_response(conversation, final_text, products, comparison, loop_rounds, total_latency, tool_log_entries)
         response['purchase_intent'] = getattr(ctx, 'purchase_intent', {})
         return response
 
+    @staticmethod
+    def _build_ml_intent_snapshot(purchase_intent=None):
+        import math
+
+        if not isinstance(purchase_intent, dict) or not purchase_intent:
+            return {}
+
+        def number(value, default=0.0):
+            try:
+                result = float(value)
+                return result if math.isfinite(result) else default
+            except (TypeError, ValueError, OverflowError):
+                return default
+
+        def text(key, default=None):
+            value = purchase_intent.get(key, default)
+            return str(value) if value is not None else default
+
+        behavior = purchase_intent.get('behavior_summary')
+        behavior = behavior if isinstance(behavior, dict) else {}
+        summary = {key: int(number(behavior.get(key))) for key in (
+            'view_count', 'unique_products', 'unique_categories', 'effective_cart_count',
+            'raw_add_to_cart_count', 'raw_remove_from_cart_count',
+        )}
+        summary.update({key: number(behavior.get(key)) for key in (
+            'session_duration_sec', 'avg_price_usd',
+        )})
+        return {
+            'available': bool(purchase_intent.get('available', False)),
+            'reason': text('reason'), 'user_session': text('user_session'),
+            'purchase_probability': number(purchase_intent.get('purchase_probability')),
+            'purchase_probability_pct': number(purchase_intent.get('purchase_probability_pct')),
+            'will_purchase': bool(purchase_intent.get('will_purchase', False)),
+            'intent_level': text('intent_level', 'low'),
+            'intent_label_vi': text('intent_label_vi', 'Mới tham khảo'),
+            'optimal_threshold': number(purchase_intent.get('optimal_threshold'), 0.31) or 0.31,
+            'champion_model_name': text('champion_model_name', 'unknown'),
+            'behavior_summary': summary,
+        }
+
+    @classmethod
+    def _build_logged_aliases(cls, resolved_aliases, purchase_intent=None):
+        aliases = dict(resolved_aliases) if isinstance(resolved_aliases, dict) else {}
+        snapshot = cls._build_ml_intent_snapshot(purchase_intent)
+        if snapshot:
+            aliases['_ml_purchase_intent'] = snapshot
+        return aliases
+
     def _persist_turn(self, conversation, raw_message, resolved_aliases, tool_log_entries,
                       loop_rounds, model_name, prompt_tokens, completion_tokens,
-                      latency_ms, final_text, status, error_detail):
+                      latency_ms, final_text, status, error_detail, purchase_intent=None):
         try:
             ChatTurnLog.objects.create(
                 conversation=conversation,
                 user_message=raw_message,
-                resolved_aliases=resolved_aliases,
+                resolved_aliases=self._build_logged_aliases(resolved_aliases, purchase_intent),
                 tool_calls=tool_log_entries,
                 loop_rounds=loop_rounds,
                 provider='gemini',

@@ -44,6 +44,110 @@ HAS_INTEGRATIONS = all(importlib.util.find_spec(name) is not None for name in (
 ))
 
 
+class AdminPurchaseIntentDashboardTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        from analytics.models import Event, Session
+        from chatbot.models import ChatTurnLog, Conversation
+        from chatbot.tests.factories import make_category, make_product, make_user
+        from chatbot.tests.test_purchase_intent import prediction
+
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.admin = make_user(email='dashboard-admin@example.test')
+        self.admin.is_staff = True
+        self.admin.save()
+        self.owner = make_user(email='dashboard-owner@example.test', name='Intent High')
+        self.other = make_user(email='dashboard-medium@example.test')
+        product = make_product(make_category(), slug='dashboard-product')
+        self.sessions = [Session.objects.create(user=user) for user in (self.owner, self.other, None)]
+        for session in self.sessions:
+            Event.objects.create(session=session, user=session.user, event_type='view_product', product=product)
+        Event.objects.create(session=self.sessions[0], event_type='add_to_cart', product=product)
+        self.conversation = Conversation.objects.create(user=self.owner)
+        ChatTurnLog.objects.create(conversation=self.conversation, resolved_aliases={
+            '_ml_purchase_intent': {'user_session': str(self.sessions[0].pk)}})
+        # Guest linkage cannot pass through the per-user conversation fallback.
+        self.guest_conversation = Conversation.objects.create(session_id='dashboard-guest')
+        ChatTurnLog.objects.create(conversation=self.guest_conversation, resolved_aliases={
+            '_ml_purchase_intent': {'user_session': str(self.sessions[2].pk)}})
+        probabilities = dict(zip((str(s.pk) for s in self.sessions), (0.68, 0.22, 0.05)))
+
+        def predict(events):
+            return prediction(probabilities[str(events[0].session_id)])
+
+        predictor = patch('analytics.ml.predictor.predict_session_purchase_intent', side_effect=predict)
+        predictor.start()
+        self.addCleanup(predictor.stop)
+
+    def test_dashboard_kpis_filters_search_and_session_chat_link(self):
+        from analytics.analytics_service import get_ml_purchase_intent_dashboard as dashboard
+        data = dashboard()
+        self.assertEqual([data[k] for k in (
+            'total_scored_sessions', 'high_intent_count', 'medium_intent_count', 'low_intent_count')], [3, 1, 1, 1])
+        high = next(row for row in data['sessions'] if row['intent_level'] == 'high')
+        self.assertTrue(high['has_chatbot_session'])
+        self.assertEqual(high['conversation_id'], self.conversation.pk)
+        self.assertEqual(high['intent_label_vi'], 'Khả năng mua cao')
+        guest = next(row for row in data['sessions'] if not row['is_authenticated_user'])
+        self.assertEqual(guest['conversation_id'], self.guest_conversation.pk)
+        self.assertEqual(guest['chat_turn_count'], 1)
+        filtered = dashboard(intent_filter='high')
+        self.assertEqual(len(filtered['sessions']), 1)
+        self.assertEqual(filtered['total_scored_sessions'], 3)
+        limited = dashboard(limit=1)
+        self.assertEqual(len(limited['sessions']), 1)
+        self.assertEqual(limited['total_scored_sessions'], 3)
+        for query in (self.owner.email, str(self.sessions[0].pk)):
+            result = dashboard(search_query=query)
+            self.assertEqual(result['total_scored_sessions'], 1)
+            self.assertEqual(result['sessions'][0]['session_id'], str(self.sessions[0].pk))
+        self.assertEqual(dashboard(search_query='missing')['total_scored_sessions'], 0)
+        self.assertEqual(dashboard(intent_filter='invalid')['intent_filter'], 'all')
+
+    def test_dashboard_unavailable_and_date_filter(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from analytics.analytics_service import get_ml_purchase_intent_dashboard as dashboard
+        from analytics.ml.purchase_intent import unavailable_payload
+        with patch('analytics.ml.purchase_intent.get_customer_purchase_intent_payload',
+                   return_value=unavailable_payload('model_unavailable')):
+            self.assertEqual(dashboard()['total_scored_sessions'], 0)
+        self.assertEqual(dashboard(date_from=timezone.now().date() + timedelta(days=2))[
+            'total_scored_sessions'], 0)
+
+    def test_dashboard_scan_cap_and_legacy_logs(self):
+        from analytics.models import Event, Session
+        from chatbot.models import ChatTurnLog
+        from analytics.analytics_service import get_ml_purchase_intent_dashboard as dashboard
+        for _ in range(59):
+            session = Session.objects.create()
+            Event.objects.create(session=session, event_type='view_product')
+        ChatTurnLog.objects.create(conversation=self.conversation, resolved_aliases={})
+        payload = {'available': True, 'intent_level': 'high', 'purchase_probability_pct': 68.0}
+        with patch('analytics.ml.purchase_intent.get_customer_purchase_intent_payload',
+                   return_value=payload) as scoring:
+            data = dashboard(limit=1)
+        self.assertEqual(scoring.call_count, 60)
+        self.assertEqual(data['total_scored_sessions'], 60)
+        self.assertEqual(len(data['sessions']), 1)
+
+    def test_admin_view_context_html_and_access_control(self):
+        url = '/admin-dashboard/analytics/'
+        self.assertEqual(self.client.get(url).status_code, 302)
+        store = self.client.session
+        store['admin_dashboard_user_id'] = self.admin.pk
+        store.save()
+        response = self.client.get(url, {'intent_filter': 'high', 'intent_q': self.owner.email})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['intent_filter'], 'high')
+        self.assertEqual(response.context['intent_query'], self.owner.email)
+        self.assertEqual(response.context['ml_intent_dashboard']['total_scored_sessions'], 1)
+        for content in ('id="mlPurchaseIntentSection"', '/chatbot/api/purchase-intent/',
+                        str(self.sessions[0].pk)):
+            self.assertContains(response, content)
+
+
 class SessionFeatureTests(TestCase):
     databases = set()
 

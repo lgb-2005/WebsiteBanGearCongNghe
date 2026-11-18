@@ -396,7 +396,7 @@ def _name_tokens_from_lookup(value):
 
 def get_product_detail(slug='', product_code='', ctx=None):
     identifier = slug or product_code
-    cache_key = f'chatbot:tool:get_product_detail:v2:{slug}:{product_code}'
+    cache_key = f'chatbot:tool:get_product_detail:v3:{slug}:{product_code}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -411,7 +411,10 @@ def get_product_detail(slug='', product_code='', ctx=None):
         tokens = _name_tokens_from_lookup(identifier)
         suggestions_qs = _base_queryset()
         for token in tokens[:3]:
-            suggestions_qs = suggestions_qs.filter(Q(name__icontains=token) | Q(product_code__icontains=token))
+            # Slug tokens are unaccented ("chuot"), unlike display names ("Chuột").
+            suggestions_qs = suggestions_qs.filter(
+                Q(slug__icontains=token) | Q(name__icontains=token) | Q(product_code__icontains=token)
+            )
         suggestions = list(suggestions_qs.with_related_data()[:3])
         llm_results, ui_results = serialize_pair(suggestions)
         payload = {

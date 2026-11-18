@@ -165,3 +165,21 @@ class CatalogToolTests(TestCase):
         with self.assertNumQueries(4):
             payload = get_product_detail(slug='chuot-logitech-g-pro-wireless')
         self.assertTrue(payload['found'])
+
+    def test_detail_suggestions_match_slug_and_exclude_unavailable_products(self):
+        from django.utils import timezone
+
+        matching = make_product(category=self.mouse, name='Thiết bị không dây',
+                                slug='chuot-acme-super-wireless')
+        make_product(category=self.mouse, name='Thiết bị ẩn',
+                     slug='chuot-acme-super-inactive', is_active=False)
+        deleted = make_product(category=self.mouse, name='Thiết bị đã xóa',
+                               slug='chuot-acme-super-deleted')
+        deleted.deleted_at = timezone.now()
+        deleted.save(update_fields=['deleted_at'])
+        make_product(category=self.keyboard, name='Thiết bị khác', slug='ban-phim-acme-super')
+
+        result = get_product_detail(slug='chuot-acme-super')
+        self.assertFalse(result['found'])
+        self.assertEqual([item['slug'] for item in result['ui_suggestions']], [matching.slug])
+        self.assertEqual([item['slug'] for item in result['suggestions']], [matching.slug])

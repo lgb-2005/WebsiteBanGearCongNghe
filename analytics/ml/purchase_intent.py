@@ -20,13 +20,62 @@ def _authenticated(user):
     return bool(user is not None and getattr(user, 'is_authenticated', False))
 
 
-def resolve_analytics_session(request=None, session_id=None, user=None):
-    from analytics.models import Session
+def _is_staff_actor(user):
+    return bool(_authenticated(user) and (
+        getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)))
 
-    actor = getattr(request, 'user', None) if request is not None else user
+
+def _resolve_actor(request=None, user=None):
+    """Resolve the caller; the selected customer must never authenticate a request."""
+    if request is None:
+        return user
+    admin_user = getattr(request, 'admin_user', None)
+    if _is_staff_actor(admin_user):
+        return admin_user
+    req_user = getattr(request, 'user', None)
+    if _is_staff_actor(req_user):
+        return req_user
+    session = getattr(request, 'session', None)
+    admin_id = session.get('admin_dashboard_user_id') if hasattr(session, 'get') else None
+    if admin_id is not None:
+        from accounts.models import User
+        try:
+            admin_id = int(admin_id)
+            if 0 < admin_id <= 9223372036854775807:
+                candidate = User.objects.filter(pk=admin_id).first()
+                if _is_staff_actor(candidate):
+                    return candidate
+        except (TypeError, ValueError, OverflowError):
+            pass
+    return req_user
+
+
+def resolve_analytics_session(request=None, session_id=None, user=None, query=None):
+    from analytics.models import Session
+    from analytics.models import Event
+    from django.db.models import Exists, OuterRef, Q
+
+    actor = _resolve_actor(request, user=user)
     authenticated = _authenticated(actor)
-    staff = authenticated and actor.is_staff
-    browser_sid = request.session.get('analytics_session_id') if request is not None else None
+    staff = _is_staff_actor(actor)
+    browser_session = getattr(request, 'session', None)
+    browser_sid = browser_session.get('analytics_session_id') if hasattr(browser_session, 'get') else None
+
+    def active_first(sessions):
+        relevant = Event.objects.filter(session_id=OuterRef('pk'), event_type__in=(
+            'view_product', 'add_to_cart', 'remove_from_cart'))
+        return sessions.annotate(_has_relevant=Exists(relevant)).order_by(
+            '-_has_relevant', '-updated_at', '-created_at', '-pk').first()
+
+    if query is not None:
+        cleaned = ' '.join(str(query).split())
+        if not staff or not cleaned or len(cleaned) > 255:
+            return None
+        matches = (Q(pk__iexact=cleaned) | Q(pk__istartswith=cleaned)
+                   | Q(user__email__icontains=cleaned) | Q(user__name__icontains=cleaned))
+        if cleaned.isascii() and cleaned.isdigit() and 0 < int(cleaned) <= 9223372036854775807:
+            matches |= Q(user_id=int(cleaned))
+        return active_first(Session.objects.filter(matches))
 
     def allowed(session):
         if session is None:
@@ -47,6 +96,8 @@ def resolve_analytics_session(request=None, session_id=None, user=None):
             return session
     selected_user = user or (actor if authenticated else None)
     if selected_user is not None:
+        if staff:
+            return active_first(Session.objects.filter(user=selected_user))
         return Session.objects.filter(user=selected_user).order_by('-updated_at', '-created_at', '-pk').first()
     return None
 
@@ -94,21 +145,25 @@ def build_consultation_strategy(prediction_result):
     return prefix + '. ' + advice + ' Xác suất là ước lượng, không thay thế yêu cầu thực tế của khách và không cho phép bịa ưu đãi.'
 
 
-def get_customer_purchase_intent_payload(request=None, session_id=None, user_id=None):
+def get_customer_purchase_intent_payload(request=None, session_id=None, user_id=None, query=None):
     from accounts.models import User
 
     start = perf_counter()
     selected_user = None
+    actor = _resolve_actor(request)
+    staff = _is_staff_actor(actor)
+    if query is not None and not staff:
+        return unavailable_payload('not_found')
     if user_id is not None:
-        actor = getattr(request, 'user', None)
-        if not _authenticated(actor) or (not actor.is_staff and actor.pk != user_id):
+        if not _authenticated(actor) or (not staff and actor.pk != user_id):
             return unavailable_payload('not_found')
         selected_user = User.objects.filter(pk=user_id).first()
         if selected_user is None:
             return unavailable_payload('not_found')
-    session = resolve_analytics_session(request, session_id=session_id, user=selected_user)
+    session = resolve_analytics_session(request, session_id=session_id, user=selected_user, query=query)
     if session is None:
-        return unavailable_payload('not_found' if session_id is not None else 'no_session')
+        return unavailable_payload('not_found' if any(
+            value is not None for value in (session_id, user_id, query)) else 'no_session')
     relevant = ('view_product', 'add_to_cart', 'remove_from_cart')
     from django.core.cache import cache
     from django.db.models import Count, Max, Q
