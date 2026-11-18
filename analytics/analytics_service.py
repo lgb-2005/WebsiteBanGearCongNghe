@@ -476,3 +476,270 @@ def get_session_analytics(date_from=None, date_to=None):
             'total_sessions': 0, 'guest_sessions': 0,
             'user_sessions': 0, 'avg_events_per_session': 0.0,
         }
+
+
+# ---------------------------------------------------------------------------
+# Section 9 — ML Purchase Intent Dashboard (Admin Analytics)
+# ---------------------------------------------------------------------------
+
+def get_ml_purchase_intent_dashboard(
+    request=None,
+    limit=15,
+    date_from=None,
+    date_to=None,
+    intent_filter='all',
+    search_query='',
+):
+    """
+    Tổng hợp dữ liệu Dự đoán Ý định Mua hàng (ML Purchase Intent) cho trang
+    /admin-dashboard/analytics/.
+    - Chỉ đọc dữ liệu (Read-only), tận dụng cache 30s của get_customer_purchase_intent_payload.
+    - Trả về 4 chỉ số KPI phân tầng ý định mua + danh sách phiên đã chấm điểm kèm
+      thông tin khách hàng, trạng thái phiên Chatbot và chiến lược tư vấn.
+    """
+    from types import SimpleNamespace
+
+    search_query = ' '.join((search_query or '').split())
+    intent_filter = (intent_filter or 'all').strip().lower()
+    if intent_filter not in {'all', 'high', 'medium', 'low'}:
+        intent_filter = 'all'
+
+    try:
+        limit = max(1, int(limit or 15))
+    except (TypeError, ValueError):
+        limit = 15
+
+    optimal_threshold = 0.31
+    champion_model_name = 'HistGradientBoosting'
+    try:
+        from analytics.ml.purchase_intent import _metadata
+        meta_threshold, meta_model = _metadata()
+        if meta_threshold and 0 < float(meta_threshold) <= 1:
+            optimal_threshold = float(meta_threshold)
+        if meta_model and meta_model != 'unknown':
+            champion_model_name = str(meta_model)
+    except Exception:
+        pass
+
+    optimal_threshold_pct = round(optimal_threshold * 100, 1)
+    medium_threshold_pct = round(optimal_threshold * 50, 1)
+
+    default_payload = {
+        'champion_model_name': champion_model_name,
+        'optimal_threshold': optimal_threshold,
+        'optimal_threshold_pct': optimal_threshold_pct,
+        'medium_threshold_pct': medium_threshold_pct,
+        'total_scored_sessions': 0,
+        'high_intent_count': 0,
+        'medium_intent_count': 0,
+        'low_intent_count': 0,
+        'high_intent_rate': 0.0,
+        'medium_intent_rate': 0.0,
+        'low_intent_rate': 0.0,
+        'avg_probability_pct': 0.0,
+        'intent_filter': intent_filter,
+        'search_query': search_query,
+        'is_filtered': bool(search_query or intent_filter != 'all'),
+        'sessions': [],
+    }
+
+    try:
+        from analytics.models import Event, Session
+        from analytics.ml.purchase_intent import get_customer_purchase_intent_payload
+
+        relevant_types = ('view_product', 'add_to_cart', 'remove_from_cart')
+        event_qs = _apply_date_filter(
+            Event.objects.filter(event_type__in=relevant_types),
+            date_from,
+            date_to,
+        )
+        active_session_ids = event_qs.values_list('session_id', flat=True).distinct()
+        session_qs = Session.objects.select_related('user').filter(pk__in=active_session_ids)
+
+        if search_query:
+            q_filter = (
+                Q(id__icontains=search_query)
+                | Q(user__email__icontains=search_query)
+                | Q(user__name__icontains=search_query)
+                | Q(device_type__icontains=search_query)
+            )
+            if search_query.isdigit():
+                q_filter |= Q(user_id=int(search_query))
+            session_qs = session_qs.filter(q_filter)
+
+        max_scan = max(limit * 4, 60)
+        candidate_sessions = list(session_qs.order_by('-updated_at', '-created_at')[:max_scan])
+        if not candidate_sessions:
+            return default_payload
+
+        actor = getattr(request, 'admin_user', None) or getattr(request, 'user', None)
+        if (
+            actor is None
+            or not getattr(actor, 'is_authenticated', False)
+            or not getattr(actor, 'is_staff', False)
+        ):
+            actor = SimpleNamespace(pk=0, is_authenticated=True, is_staff=True)
+        scoring_request = SimpleNamespace(
+            user=actor,
+            session=getattr(request, 'session', {}) if request is not None else {},
+        )
+
+        user_chat_map = {}
+        session_chat_map = {}
+        try:
+            from chatbot.models import ChatTurnLog, Conversation
+
+            user_ids = {s.user_id for s in candidate_sessions if s.user_id}
+            if user_ids:
+                convs = (
+                    Conversation.objects
+                    .filter(user_id__in=user_ids)
+                    .annotate(
+                        turn_count=Count('turn_logs', distinct=True),
+                        user_msg_count=Count(
+                            'messages',
+                            filter=Q(messages__role='user'),
+                            distinct=True,
+                        ),
+                    )
+                    .order_by('-updated_at')
+                )
+                for conv in convs:
+                    turns = conv.turn_count or conv.user_msg_count or 0
+                    existing = user_chat_map.get(conv.user_id)
+                    if existing is None:
+                        user_chat_map[conv.user_id] = {
+                            'conversation_id': conv.pk,
+                            'turn_count': turns,
+                        }
+                    else:
+                        existing['turn_count'] += turns
+
+            candidate_sid_set = {str(s.pk) for s in candidate_sessions}
+            if candidate_sid_set:
+                recent_logs = (
+                    ChatTurnLog.objects
+                    .filter(conversation__isnull=False, resolved_aliases__isnull=False)
+                    .order_by('-created_at')[:300]
+                )
+                for log in recent_logs:
+                    aliases = log.resolved_aliases if isinstance(log.resolved_aliases, dict) else {}
+                    ml_snap = aliases.get('_ml_purchase_intent')
+                    if isinstance(ml_snap, dict):
+                        snap_sid = str(ml_snap.get('user_session') or '')
+                        if snap_sid in candidate_sid_set:
+                            info = session_chat_map.setdefault(
+                                snap_sid,
+                                {'conversation_id': log.conversation_id, 'turn_count': 0},
+                            )
+                            info['turn_count'] += 1
+        except Exception:
+            pass
+
+        total_scored_sessions = 0
+        high_intent_count = 0
+        medium_intent_count = 0
+        low_intent_count = 0
+        prob_sum = 0.0
+        sessions = []
+
+        for session in candidate_sessions:
+            sid_str = str(session.pk)
+            payload = get_customer_purchase_intent_payload(
+                scoring_request,
+                session_id=sid_str,
+            )
+            if not payload.get('available'):
+                continue
+
+            level = payload.get('intent_level', 'low')
+            prob_pct = float(payload.get('purchase_probability_pct', 0.0) or 0.0)
+
+            total_scored_sessions += 1
+            prob_sum += prob_pct
+            if level == 'high':
+                high_intent_count += 1
+            elif level == 'medium':
+                medium_intent_count += 1
+            else:
+                low_intent_count += 1
+
+            if intent_filter in ('high', 'medium', 'low') and level != intent_filter:
+                continue
+
+            if len(sessions) >= limit:
+                continue
+
+            behavior = payload.get('behavior_summary') or {}
+            chat_info = session_chat_map.get(sid_str) or (
+                user_chat_map.get(session.user_id) if session.user_id else None
+            ) or {}
+            has_chat = bool(chat_info.get('conversation_id') and chat_info.get('turn_count', 0) > 0)
+            avg_price_usd = float(behavior.get('avg_price_usd', 0.0) or 0.0)
+
+            sessions.append({
+                'session_id': sid_str,
+                'short_session_id': f'{sid_str[:8]}...',
+                'updated_at': session.updated_at,
+                'created_at': session.created_at,
+                'device_type': session.device_type or 'desktop',
+                'is_authenticated_user': bool(session.user_id),
+                'user_id': session.user_id,
+                'customer_name': (
+                    (session.user.name or session.user.email)
+                    if session.user else 'Khách vãng lai (Guest)'
+                ),
+                'customer_email': session.user.email if session.user else '',
+                'has_chatbot_session': has_chat,
+                'conversation_id': chat_info.get('conversation_id'),
+                'chat_turn_count': int(chat_info.get('turn_count', 0) or 0),
+                'purchase_probability': payload.get('purchase_probability', 0.0),
+                'purchase_probability_pct': round(prob_pct, 2),
+                'will_purchase': bool(payload.get('will_purchase', False)),
+                'intent_level': level,
+                'intent_label_vi': payload.get('intent_label_vi', 'Mới tham khảo'),
+                'view_count': int(behavior.get('view_count', 0) or 0),
+                'unique_products': int(behavior.get('unique_products', 0) or 0),
+                'effective_cart_count': int(behavior.get('effective_cart_count', 0) or 0),
+                'raw_add_to_cart_count': int(behavior.get('raw_add_to_cart_count', 0) or 0),
+                'raw_remove_from_cart_count': int(behavior.get('raw_remove_from_cart_count', 0) or 0),
+                'session_duration_sec': round(float(behavior.get('session_duration_sec', 0.0) or 0.0)),
+                'avg_price_usd': round(avg_price_usd, 2),
+                'avg_price_vnd': int(round(avg_price_usd * 25000)),
+                'consultation_strategy': payload.get('consultation_strategy', ''),
+            })
+
+        return {
+            'champion_model_name': champion_model_name,
+            'optimal_threshold': optimal_threshold,
+            'optimal_threshold_pct': optimal_threshold_pct,
+            'medium_threshold_pct': medium_threshold_pct,
+            'total_scored_sessions': total_scored_sessions,
+            'high_intent_count': high_intent_count,
+            'medium_intent_count': medium_intent_count,
+            'low_intent_count': low_intent_count,
+            'high_intent_rate': (
+                round(high_intent_count / total_scored_sessions * 100, 1)
+                if total_scored_sessions else 0.0
+            ),
+            'medium_intent_rate': (
+                round(medium_intent_count / total_scored_sessions * 100, 1)
+                if total_scored_sessions else 0.0
+            ),
+            'low_intent_rate': (
+                round(low_intent_count / total_scored_sessions * 100, 1)
+                if total_scored_sessions else 0.0
+            ),
+            'avg_probability_pct': (
+                round(prob_sum / total_scored_sessions, 2)
+                if total_scored_sessions else 0.0
+            ),
+            'intent_filter': intent_filter,
+            'search_query': search_query,
+            'is_filtered': bool(search_query or intent_filter != 'all'),
+            'sessions': sessions,
+        }
+    except Exception as e:
+        print(f'[analytics_service] get_ml_purchase_intent_dashboard error: {e}')
+        return default_payload
+

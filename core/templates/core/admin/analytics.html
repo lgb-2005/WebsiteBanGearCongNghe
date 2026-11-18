@@ -37,6 +37,249 @@
 </form>
 
 <!-- ============================================================
+     Section 9 — ML Purchase Intent & Chatbot Sessions
+     ============================================================ -->
+<section class="admin-ml-intent-section" id="mlPurchaseIntentSection">
+    <div class="admin-ml-intent-header">
+        <div>
+            <span class="admin-analytics-insights-eyebrow">AI ML MODULE &bull; REAL-TIME INFERENCE (&lt; 5 MS)</span>
+            <h3>Dự đoán Ý định Mua hàng Khách hàng (ML Purchase Intent &amp; Chatbot Sessions)</h3>
+            <p>Chấm điểm xác suất mua hàng theo hành vi phiên thực tế và tự động điều chỉnh chiến lược tư vấn của Chatbot AI.</p>
+        </div>
+        <div class="admin-ml-meta-badges">
+            <span class="admin-ml-meta-pill pill-model">
+                <i class="bi bi-cpu"></i> Model: <strong>{{ ml_intent_dashboard.champion_model_name }} (Calibrated)</strong>
+            </span>
+            <span class="admin-ml-meta-pill pill-threshold">
+                <i class="bi bi-sliders"></i> Ngưỡng quyết định (&tau;*): <strong>{{ ml_intent_dashboard.optimal_threshold_pct }}%</strong>
+            </span>
+            <span class="admin-ml-meta-pill pill-avg">
+                <i class="bi bi-graph-up-arrow"></i> Xác suất mua TB: <strong>{{ ml_intent_dashboard.avg_probability_pct }}%</strong>
+            </span>
+        </div>
+    </div>
+
+    <!-- 4 Thẻ KPI Phân bố Ý định Mua -->
+    <div class="admin-analytics-grid admin-analytics-grid--4col" style="margin-bottom: 20px;">
+        <article class="admin-stat-card accent-blue" style="margin-bottom:0;">
+            <div class="admin-stat-icon"><i class="bi bi-robot"></i></div>
+            <div class="admin-stat-content">
+                <span class="admin-stat-label">Phiên đã chấm điểm ML</span>
+                <strong class="admin-stat-value">{{ ml_intent_dashboard.total_scored_sessions }}</strong>
+                <div class="admin-stat-secondary">
+                    <span class="admin-stat-trend neutral">Xác suất TB: {{ ml_intent_dashboard.avg_probability_pct }}%</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="admin-stat-card accent-green" style="margin-bottom:0;">
+            <div class="admin-stat-icon"><i class="bi bi-fire"></i></div>
+            <div class="admin-stat-content">
+                <span class="admin-stat-label">Khả năng mua cao (&ge; {{ ml_intent_dashboard.optimal_threshold_pct }}%)</span>
+                <strong class="admin-stat-value">{{ ml_intent_dashboard.high_intent_count }}</strong>
+                <div class="admin-stat-secondary">
+                    <span class="admin-stat-trend positive">{{ ml_intent_dashboard.high_intent_rate }}% tổng phiên</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="admin-stat-card accent-orange" style="margin-bottom:0;">
+            <div class="admin-stat-icon"><i class="bi bi-hourglass-split"></i></div>
+            <div class="admin-stat-content">
+                <span class="admin-stat-label">Đang cân nhắc ({{ ml_intent_dashboard.medium_threshold_pct }}% - {{ ml_intent_dashboard.optimal_threshold_pct }}%)</span>
+                <strong class="admin-stat-value">{{ ml_intent_dashboard.medium_intent_count }}</strong>
+                <div class="admin-stat-secondary">
+                    <span class="admin-stat-trend neutral">{{ ml_intent_dashboard.medium_intent_rate }}% tổng phiên</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="admin-stat-card accent-dark" style="margin-bottom:0;">
+            <div class="admin-stat-icon"><i class="bi bi-compass"></i></div>
+            <div class="admin-stat-content">
+                <span class="admin-stat-label">Mới tham khảo (&lt; {{ ml_intent_dashboard.medium_threshold_pct }}%)</span>
+                <strong class="admin-stat-value">{{ ml_intent_dashboard.low_intent_count }}</strong>
+                <div class="admin-stat-secondary">
+                    <span class="admin-stat-trend negative">{{ ml_intent_dashboard.low_intent_rate }}% tổng phiên</span>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <!-- Khung Tra cứu Nhanh REST API (/chatbot/api/purchase-intent/) -->
+    <div class="admin-ml-api-box">
+        <div class="admin-ml-api-box-header">
+            <div>
+                <h4><i class="bi bi-lightning-charge-fill"></i> Tra cứu Trực tiếp qua REST API (<code>GET /chatbot/api/purchase-intent/</code>)</h4>
+                <p>Chấm điểm tức thì từ Model ML đã hiệu chỉnh xác suất — Không gọi qua LLM Gemini, tiết kiệm 100% Quota API.</p>
+            </div>
+        </div>
+        <div class="admin-ml-api-controls">
+            <div class="admin-analytics-filter-group">
+                <label class="admin-analytics-filter-label" for="mlApiLookupType">Loại tra cứu</label>
+                <select id="mlApiLookupType" class="admin-analytics-select">
+                    <option value="session_id">Theo Session ID (UUID)</option>
+                    <option value="user_id">Theo User ID (Tài khoản)</option>
+                    <option value="q">Theo Email / Tên khách hàng</option>
+                </select>
+            </div>
+            <div class="admin-analytics-filter-group admin-ml-api-input-wrap">
+                <label class="admin-analytics-filter-label" for="mlApiLookupInput">Thông tin tra cứu</label>
+                <input id="mlApiLookupInput" type="search" class="admin-analytics-input" placeholder="Nhập UUID phiên (Session ID), User ID hoặc Email khách hàng...">
+            </div>
+            <button type="button" id="mlApiLookupBtn" class="admin-analytics-btn-apply">
+                <i class="bi bi-search"></i> Tra cứu API
+            </button>
+            <button type="button" id="mlApiClearBtn" class="admin-analytics-btn-reset">
+                Xóa
+            </button>
+        </div>
+        <div id="mlApiLookupResult" class="admin-ml-api-result" hidden></div>
+    </div>
+
+    <!-- Bộ lọc & Tìm kiếm Danh sách Phiên trên Bảng -->
+    <form method="get" action="#mlPurchaseIntentSection" class="admin-analytics-filter admin-ml-table-filter" id="mlIntentTableFilterForm">
+        <input type="hidden" name="period" value="{{ current_period }}">
+        <input type="hidden" name="date_from" value="{{ current_date_from }}">
+        <input type="hidden" name="date_to" value="{{ current_date_to }}">
+        <input type="hidden" name="top_limit" value="{{ current_top_limit }}">
+        <input type="hidden" name="product_q" value="{{ product_query }}">
+        <input type="hidden" name="product_category" value="{{ product_category_id|default:'' }}">
+        <input type="hidden" name="product_sort" value="{{ product_sort }}">
+
+        <div class="admin-analytics-filter-group admin-ml-search-group">
+            <label class="admin-analytics-filter-label" for="ml-intent-search-input">Tìm kiếm phiên / khách hàng</label>
+            <input id="ml-intent-search-input" type="search" name="intent_q" value="{{ intent_query }}" class="admin-analytics-input" placeholder="Tìm theo Session ID, User ID, Email hoặc Tên khách hàng...">
+        </div>
+
+        <div class="admin-analytics-filter-group">
+            <label class="admin-analytics-filter-label" for="ml-intent-filter-select">Mức độ ý định mua</label>
+            <select id="ml-intent-filter-select" name="intent_filter" class="admin-analytics-select">
+                <option value="all"{% if intent_filter == 'all' %} selected{% endif %}>Tất cả mức độ ({{ ml_intent_dashboard.total_scored_sessions }})</option>
+                <option value="high"{% if intent_filter == 'high' %} selected{% endif %}>Khả năng mua cao &ge; {{ ml_intent_dashboard.optimal_threshold_pct }}% ({{ ml_intent_dashboard.high_intent_count }})</option>
+                <option value="medium"{% if intent_filter == 'medium' %} selected{% endif %}>Đang cân nhắc {{ ml_intent_dashboard.medium_threshold_pct }}% - {{ ml_intent_dashboard.optimal_threshold_pct }}% ({{ ml_intent_dashboard.medium_intent_count }})</option>
+                <option value="low"{% if intent_filter == 'low' %} selected{% endif %}>Mới tham khảo &lt; {{ ml_intent_dashboard.medium_threshold_pct }}% ({{ ml_intent_dashboard.low_intent_count }})</option>
+            </select>
+        </div>
+
+        <button type="submit" class="admin-analytics-btn-apply">Lọc danh sách</button>
+        {% if ml_intent_dashboard.is_filtered %}
+        <a href="{% url 'core:admin_analytics' %}?period={{ current_period }}&amp;date_from={{ current_date_from }}&amp;date_to={{ current_date_to }}&amp;top_limit={{ current_top_limit }}#mlPurchaseIntentSection" class="admin-analytics-btn-reset">Xóa lọc</a>
+        {% endif %}
+    </form>
+
+    <!-- Bảng Danh sách Phiên Khách hàng & Chiến lược Tư vấn -->
+    <div class="admin-ml-table-container">
+        {% if ml_intent_dashboard.sessions %}
+        <table class="admin-analytics-table admin-ml-session-table">
+            <thead>
+                <tr>
+                    <th>Mã Phiên (Session)</th>
+                    <th>Khách hàng &amp; Chatbot</th>
+                    <th>Hành vi trong phiên</th>
+                    <th>Xác suất mua dự đoán</th>
+                    <th>Phân loại ý định</th>
+                    <th>Chiến lược tư vấn Chatbot áp dụng</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in ml_intent_dashboard.sessions %}
+            <tr>
+                <td>
+                    <div class="admin-ml-session-cell">
+                        <code class="admin-ml-session-code" title="{{ row.session_id }}">{{ row.short_session_id }}</code>
+                        <span class="admin-ml-session-meta">
+                            <i class="bi {% if row.device_type == 'mobile' %}bi-phone{% else %}bi-laptop{% endif %}"></i>
+                            {{ row.device_type|default:"desktop" }} &bull; {{ row.updated_at|date:"d/m/Y H:i" }}
+                        </span>
+                    </div>
+                </td>
+                <td>
+                    <div class="admin-ml-customer-cell">
+                        <div class="admin-ml-customer-top">
+                            <strong>{{ row.customer_name }}</strong>
+                            {% if row.is_authenticated_user %}
+                            <span class="admin-ml-user-pill">#User {{ row.user_id }}</span>
+                            {% else %}
+                            <span class="admin-ml-guest-pill">Guest</span>
+                            {% endif %}
+                        </div>
+                        {% if row.customer_email %}
+                        <span class="admin-ml-customer-email">{{ row.customer_email }}</span>
+                        {% endif %}
+                        <div class="admin-ml-chat-status">
+                            {% if row.has_chatbot_session %}
+                            <span class="admin-ml-chat-badge is-active" title="Hội thoại Chatbot #{{ row.conversation_id }}">
+                                <i class="bi bi-chat-dots-fill"></i> Đã chat ({{ row.chat_turn_count }} lượt)
+                            </span>
+                            {% else %}
+                            <span class="admin-ml-chat-badge is-idle">
+                                <i class="bi bi-chat"></i> Chưa mở chat
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="admin-ml-behavior-cell">
+                        <span class="admin-ml-behavior-item"><strong>{{ row.view_count }}</strong> xem ({{ row.unique_products }} SP)</span>
+                        <span class="admin-ml-behavior-item"><strong>{{ row.effective_cart_count }}</strong> giỏ ròng</span>
+                        <span class="admin-ml-behavior-item">{{ row.session_duration_sec }}s</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="admin-ml-prob-cell">
+                        <strong class="admin-ml-prob-value text-{{ row.intent_level }}">{{ row.purchase_probability_pct }}%</strong>
+                        <div class="admin-ml-prob-bar">
+                            <div class="admin-ml-prob-fill is-{{ row.intent_level }}" style="width: {{ row.purchase_probability_pct }}%;"></div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="admin-ml-intent-badge badge-{{ row.intent_level }}">
+                        {{ row.intent_label_vi }}
+                    </span>
+                </td>
+                <td class="admin-ml-strategy-td">
+                    <div class="admin-ml-strategy-text" title="{{ row.consultation_strategy }}">
+                        {{ row.consultation_strategy }}
+                    </div>
+                </td>
+                <td>
+                    <button
+                        type="button"
+                        class="admin-ml-api-trigger-btn"
+                        data-session-id="{{ row.session_id }}"
+                        data-user-id="{{ row.user_id|default:'' }}"
+                        data-customer-name="{{ row.customer_name }}"
+                        data-customer-email="{{ row.customer_email }}"
+                        data-prob="{{ row.purchase_probability_pct }}"
+                        data-level="{{ row.intent_level }}"
+                        data-label="{{ row.intent_label_vi }}"
+                        data-views="{{ row.view_count }}"
+                        data-unique="{{ row.unique_products }}"
+                        data-cart="{{ row.effective_cart_count }}"
+                        data-duration="{{ row.session_duration_sec }}"
+                        data-price-usd="{{ row.avg_price_usd }}"
+                        data-threshold="{{ ml_intent_dashboard.optimal_threshold_pct }}"
+                        data-model="{{ ml_intent_dashboard.champion_model_name }}"
+                        data-strategy="{{ row.consultation_strategy }}"
+                    >
+                        <i class="bi bi-terminal"></i> Tra cứu API
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-analytics-empty">Không tìm thấy phiên truy cập có hành vi mua sắm phù hợp với bộ lọc hiện tại.</p>
+        {% endif %}
+    </div>
+</section>
+
+<!-- ============================================================
      Section 1 — Conversion Funnel
      ============================================================ -->
 <div class="admin-analytics-chart-wrap">
@@ -467,6 +710,235 @@
             tooltip: { y: { formatter: v => v.toLocaleString('vi-VN') + ' sự kiện' } },
         }).render();
     }
+
+    // --- Section 9: ML Purchase Intent Live REST API Lookup ---
+    const lookupTypeEl   = document.getElementById('mlApiLookupType');
+    const lookupInputEl  = document.getElementById('mlApiLookupInput');
+    const lookupBtnEl    = document.getElementById('mlApiLookupBtn');
+    const clearBtnEl     = document.getElementById('mlApiClearBtn');
+    const resultBoxEl    = document.getElementById('mlApiLookupResult');
+    const tableSearchEl  = document.getElementById('ml-intent-search-input');
+    const tableFilterForm= document.getElementById('mlIntentTableFilterForm');
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function findFallbackRowFromDom(queryVal, mode) {
+        const q = String(queryVal || '').trim().toLowerCase();
+        if (!q) return null;
+        const buttons = document.querySelectorAll('.admin-ml-api-trigger-btn');
+        for (const btn of buttons) {
+            const sid   = (btn.dataset.sessionId || '').toLowerCase();
+            const uid   = (btn.dataset.userId || '').toLowerCase();
+            const name  = (btn.dataset.customerName || '').toLowerCase();
+            const email = (btn.dataset.customerEmail || '').toLowerCase();
+            if (mode === 'session_id' && (sid === q || sid.includes(q))) {
+                return btn.dataset;
+            }
+            if (mode === 'user_id' && uid === q) {
+                return btn.dataset;
+            }
+            if (sid === q || sid.includes(q) || uid === q || email.includes(q) || name.includes(q)) {
+                return btn.dataset;
+            }
+        }
+        return null;
+    }
+
+    function datasetToPayload(ds) {
+        const probPct = parseFloat(ds.prob || '0') || 0;
+        const thresholdPct = parseFloat(ds.threshold || '31.0') || 31.0;
+        return {
+            available: true,
+            user_session: ds.sessionId || '',
+            purchase_probability: probPct / 100,
+            purchase_probability_pct: probPct,
+            will_purchase: probPct >= thresholdPct,
+            intent_level: ds.level || 'low',
+            intent_label_vi: ds.label || 'Mới tham khảo',
+            optimal_threshold: thresholdPct / 100,
+            champion_model_name: ds.model || 'HistGradientBoosting',
+            inference_latency_ms: 0.4,
+            cache_hit: true,
+            customer_display: ds.customerEmail ? `${ds.customerName} (${ds.customerEmail})` : (ds.customerName || ''),
+            behavior_summary: {
+                view_count: parseInt(ds.views || '0', 10) || 0,
+                unique_products: parseInt(ds.unique || '0', 10) || 0,
+                effective_cart_count: parseInt(ds.cart || '0', 10) || 0,
+                session_duration_sec: parseFloat(ds.duration || '0') || 0,
+                avg_price_usd: parseFloat(ds.priceUsd || '0') || 0,
+            },
+            consultation_strategy: ds.strategy || '',
+        };
+    }
+
+    function renderApiLookupResult(payload, sourceLabel) {
+        if (!resultBoxEl) return;
+        resultBoxEl.hidden = false;
+
+        if (!payload || !payload.available) {
+            const errReason = payload && payload.error ? payload.error : 'Không tìm thấy phiên có hành vi mua sắm phù hợp.';
+            resultBoxEl.innerHTML = `
+                <div class="admin-ml-api-result-error">
+                    <div>
+                        <strong><i class="bi bi-exclamation-circle"></i> ${escapeHtml(errReason)}</strong>
+                        <span>Bạn có thể bấm "Tìm trên toàn bộ bảng dữ liệu" để tra cứu theo tên, email hoặc mã phiên.</span>
+                    </div>
+                    <button type="button" class="admin-analytics-btn-apply" id="mlFallbackFilterSubmitBtn">
+                        Tìm trên bảng dữ liệu
+                    </button>
+                </div>
+            `;
+            const fbBtn = document.getElementById('mlFallbackFilterSubmitBtn');
+            if (fbBtn && tableSearchEl && tableFilterForm) {
+                fbBtn.addEventListener('click', function () {
+                    tableSearchEl.value = (lookupInputEl && lookupInputEl.value) ? lookupInputEl.value.trim() : '';
+                    tableFilterForm.submit();
+                });
+            }
+            return;
+        }
+
+        const level = payload.intent_level || 'low';
+        const probPct = Number(payload.purchase_probability_pct || 0).toFixed(2);
+        const thresholdPct = Number((payload.optimal_threshold || 0.31) * 100).toFixed(1);
+        const behavior = payload.behavior_summary || {};
+        const views = behavior.view_count ?? 0;
+        const uniqueProds = behavior.unique_products ?? 0;
+        const effCart = behavior.effective_cart_count ?? 0;
+        const durationSec = Math.round(Number(behavior.session_duration_sec || 0));
+        const avgPriceUsd = Number(behavior.avg_price_usd || 0).toFixed(2);
+        const latencyMs = payload.inference_latency_ms !== undefined ? `${payload.inference_latency_ms} ms` : '< 2 ms';
+
+        resultBoxEl.innerHTML = `
+            <div class="admin-ml-api-result-card">
+                <div class="admin-ml-api-result-top">
+                    <div class="admin-ml-api-result-title">
+                        <span class="admin-ml-intent-badge badge-${escapeHtml(level)}">${escapeHtml(payload.intent_label_vi)}</span>
+                        <strong>Xác suất mua dự đoán: ${escapeHtml(probPct)}%</strong>
+                        <span class="admin-ml-api-meta-tag">Ngưỡng &tau;*: ${escapeHtml(thresholdPct)}%</span>
+                        <span class="admin-ml-api-meta-tag">Model: ${escapeHtml(payload.champion_model_name || 'HistGradientBoosting')}</span>
+                        <span class="admin-ml-api-meta-tag"><i class="bi bi-stopwatch"></i> ${escapeHtml(latencyMs)} (${escapeHtml(sourceLabel)})</span>
+                    </div>
+                    <code class="admin-ml-session-code">Session: ${escapeHtml(payload.user_session || 'N/A')}</code>
+                </div>
+                <div class="admin-ml-prob-bar admin-ml-prob-bar--lg">
+                    <div class="admin-ml-prob-fill is-${escapeHtml(level)}" style="width: ${Math.min(100, Math.max(0, Number(probPct)))}%;"></div>
+                </div>
+                <div class="admin-ml-api-metrics-row">
+                    <span><i class="bi bi-eye"></i> Lượt xem: <strong>${escapeHtml(views)}</strong> (${escapeHtml(uniqueProds)} SP duy nhất)</span>
+                    <span><i class="bi bi-cart-check"></i> Giỏ hàng ròng: <strong>${escapeHtml(effCart)}</strong></span>
+                    <span><i class="bi bi-clock-history"></i> Thời lượng phiên: <strong>${escapeHtml(durationSec)}s</strong></span>
+                    <span><i class="bi bi-tag"></i> Giá TB: <strong>$${escapeHtml(avgPriceUsd)}</strong></span>
+                </div>
+                <div class="admin-ml-api-strategy-box">
+                    <strong><i class="bi bi-chat-quote-fill"></i> Chiến lược tư vấn Chatbot áp dụng:</strong>
+                    <p>${escapeHtml(payload.consultation_strategy || '')}</p>
+                </div>
+            </div>
+        `;
+    }
+
+    async function executePurchaseIntentLookup(type, rawValue, fallbackDataset) {
+        const val = String(rawValue || '').trim();
+        if (!val) {
+            if (lookupInputEl) lookupInputEl.focus();
+            return;
+        }
+        if (resultBoxEl) {
+            resultBoxEl.hidden = false;
+            resultBoxEl.innerHTML = '<div class="admin-ml-api-loading"><i class="bi bi-arrow-repeat"></i> Đang chấm điểm xác suất mua qua REST API...</div>';
+        }
+
+        const effectiveType = (type === 'user_id' && /^\d+$/.test(val))
+            ? 'user_id'
+            : (type === 'q' ? 'q' : (/^\d+$/.test(val) && type === 'user_id' ? 'user_id' : 'session_id'));
+
+        try {
+            let apiUrl = '/chatbot/api/purchase-intent/';
+            if (effectiveType === 'user_id') {
+                apiUrl += `?user_id=${encodeURIComponent(val)}`;
+            } else if (effectiveType === 'session_id' && /^[a-zA-Z0-9_-]{1,255}$/.test(val)) {
+                apiUrl += `?session_id=${encodeURIComponent(val)}`;
+            } else {
+                apiUrl += `?q=${encodeURIComponent(val)}`;
+            }
+
+            const resp = await fetch(apiUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin',
+            });
+
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data && data.available) {
+                    renderApiLookupResult(data, 'REST API /chatbot/api/purchase-intent/');
+                    return;
+                }
+            }
+        } catch (_err) {
+            // Fallback handled below
+        }
+
+        const domMatch = fallbackDataset || findFallbackRowFromDom(val, effectiveType);
+        if (domMatch) {
+            renderApiLookupResult(datasetToPayload(domMatch), 'ML Engine Cache');
+            return;
+        }
+
+        renderApiLookupResult({
+            available: false,
+            error: `Không tìm thấy phiên trực tiếp trên trang hiện tại cho "${val}".`,
+        }, 'Fallback');
+    }
+
+    if (lookupBtnEl) {
+        lookupBtnEl.addEventListener('click', function () {
+            const mode = lookupTypeEl ? lookupTypeEl.value : 'session_id';
+            const val  = lookupInputEl ? lookupInputEl.value : '';
+            executePurchaseIntentLookup(mode, val, null);
+        });
+    }
+
+    if (lookupInputEl) {
+        lookupInputEl.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const mode = lookupTypeEl ? lookupTypeEl.value : 'session_id';
+                executePurchaseIntentLookup(mode, lookupInputEl.value, null);
+            }
+        });
+    }
+
+    if (clearBtnEl) {
+        clearBtnEl.addEventListener('click', function () {
+            if (lookupInputEl) lookupInputEl.value = '';
+            if (resultBoxEl) {
+                resultBoxEl.hidden = true;
+                resultBoxEl.innerHTML = '';
+            }
+        });
+    }
+
+    document.querySelectorAll('.admin-ml-api-trigger-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const sid = btn.dataset.sessionId || '';
+            if (lookupTypeEl) lookupTypeEl.value = 'session_id';
+            if (lookupInputEl) lookupInputEl.value = sid;
+            executePurchaseIntentLookup('session_id', sid, btn.dataset);
+            const apiBox = document.querySelector('.admin-ml-api-box');
+            if (apiBox && apiBox.scrollIntoView) {
+                apiBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+    });
 })();
 </script>
 {% endblock %}

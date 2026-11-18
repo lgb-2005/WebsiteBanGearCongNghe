@@ -674,6 +674,11 @@ def admin_analytics(request):
     }:
         product_sort = 'views_desc'
 
+    intent_query = ' '.join((request.GET.get('intent_q') or '').split())
+    intent_filter = (request.GET.get('intent_filter') or 'all').strip().lower()
+    if intent_filter not in {'all', 'high', 'medium', 'low'}:
+        intent_filter = 'all'
+
     date_from = None
     date_to   = None
     try:
@@ -695,6 +700,7 @@ def admin_analytics(request):
         get_product_interest,
         get_abandoned_cart,
         get_session_analytics,
+        get_ml_purchase_intent_dashboard,
     )
     from analytics.dashboard import get_event_distribution
 
@@ -713,6 +719,14 @@ def admin_analytics(request):
     interest         = get_product_interest(limit=top_limit, date_from=date_from, date_to=date_to)
     abandoned        = get_abandoned_cart(date_from=date_from, date_to=date_to)
     session_stats    = get_session_analytics(date_from=date_from, date_to=date_to)
+    ml_intent_dashboard = get_ml_purchase_intent_dashboard(
+        request=request,
+        limit=max(top_limit, 15),
+        date_from=date_from,
+        date_to=date_to,
+        intent_filter=intent_filter,
+        search_query=intent_query,
+    )
 
     traffic_labels   = [t['period_label']  for t in traffic]
     traffic_sessions = [t['session_count'] for t in traffic]
@@ -734,6 +748,9 @@ def admin_analytics(request):
         'interest':          interest,
         'abandoned':         abandoned,
         'session_stats':     session_stats,
+        'ml_intent_dashboard': ml_intent_dashboard,
+        'intent_query':        intent_query,
+        'intent_filter':       intent_filter,
         'traffic_labels_json':   json.dumps(traffic_labels),
         'traffic_sessions_json': json.dumps(traffic_sessions),
         'traffic_guests_json':   json.dumps(traffic_guests),
